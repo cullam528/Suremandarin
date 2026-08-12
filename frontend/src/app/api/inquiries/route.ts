@@ -1,9 +1,11 @@
 import { NextResponse } from "next/server";
 
-const STRAPI_URL =
-  process.env.STRAPI_URL ??
-  process.env.NEXT_PUBLIC_STRAPI_URL ??
-  "https://api.suremandarin.com";
+const configuredStrapiUrl = process.env.NEXT_PUBLIC_STRAPI_URL ?? process.env.STRAPI_URL;
+const STRAPI_URL = (
+  configuredStrapiUrl && !/localhost|127\.0\.0\.1/i.test(configuredStrapiUrl)
+    ? configuredStrapiUrl
+    : "https://api.suremandarin.com"
+).replace(/\/$/, "");
 
 export async function POST(request: Request) {
   try {
