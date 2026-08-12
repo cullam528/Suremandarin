@@ -5,6 +5,11 @@ const config = ({ env }: Core.Config.Shared.ConfigParams): Core.Config.Server =>
   host: env('HOST', '0.0.0.0'),
   port: env.int('PORT', 1337),
   url: env('PUBLIC_URL', 'http://localhost:1337'),
+  // Render terminates TLS before forwarding requests to Strapi. Trust its
+  // forwarded protocol header so Koa can safely issue secure auth cookies.
+  proxy: {
+    koa: env.bool('PROXY_KOA', env('NODE_ENV') === 'production'),
+  },
   app: {
     keys: env.array('APP_KEYS')!,
   },
