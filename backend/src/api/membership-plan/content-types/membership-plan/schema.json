@@ -1,0 +1,94 @@
+{
+  "kind": "collectionType",
+  "collectionName": "membership_plans",
+  "info": {
+    "singularName": "membership-plan",
+    "pluralName": "membership-plans",
+    "displayName": "04 会员与交易 · 会员方案"
+  },
+  "options": {
+    "draftAndPublish": true
+  },
+  "pluginOptions": {
+    "i18n": {
+      "localized": true
+    }
+  },
+  "attributes": {
+    "name": {
+      "type": "string",
+      "required": true
+    },
+    "code": {
+      "type": "enumeration",
+      "enum": [
+        "vip",
+        "svip"
+      ]
+    },
+    "description": {
+      "type": "text",
+      "pluginOptions": { "i18n": { "localized": true } }
+    },
+    "benefits": {
+      "type": "component",
+      "component": "shared.feature-item",
+      "repeatable": true,
+      "pluginOptions": { "i18n": { "localized": true } }
+    },
+    "monthlyPrice": {
+      "type": "decimal"
+    },
+    "yearlyPrice": {
+      "type": "decimal"
+    },
+    "currency": {
+      "type": "enumeration",
+      "enum": [
+        "USD",
+        "CNY",
+        "EUR",
+        "GBP"
+      ],
+      "default": "USD"
+    },
+    "trialDays": {
+      "type": "integer",
+      "default": 0
+    },
+    "autoRenew": {
+      "type": "boolean",
+      "default": true
+    },
+    "recommended": {
+      "type": "boolean",
+      "default": false
+    },
+    "enabled": {
+      "type": "boolean",
+      "default": true
+    },
+    "sortOrder": {
+      "type": "integer",
+      "default": 0
+    },
+    "paypalProductId": {
+      "type": "string"
+    },
+    "paypalMonthlyPlanId": {
+      "type": "string"
+    },
+    "paypalYearlyPlanId": {
+      "type": "string"
+    },
+    "appleProductId": {
+      "type": "string"
+    },
+    "googleProductId": {
+      "type": "string"
+    },
+    "wechatProductId": {
+      "type": "string"
+    }
+  }
+}

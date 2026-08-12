@@ -1,0 +1,88 @@
+{
+  "kind": "collectionType",
+  "collectionName": "testimonials",
+  "info": {
+    "singularName": "testimonial",
+    "pluralName": "testimonials",
+    "displayName": "01 内容 · 学员评价"
+  },
+  "options": {
+    "draftAndPublish": true
+  },
+  "pluginOptions": {
+    "i18n": {
+      "localized": true
+    }
+  },
+  "attributes": {
+    "studentName": {
+      "type": "string",
+      "required": true
+    },
+    "country": {
+      "type": "string",
+      "pluginOptions": { "i18n": { "localized": true } }
+    },
+    "avatar": {
+      "type": "media",
+      "multiple": false,
+      "allowedTypes": [
+        "images"
+      ]
+    },
+    "quote": {
+      "type": "text",
+      "pluginOptions": { "i18n": { "localized": true } }
+    },
+    "goal": {
+      "type": "string",
+      "pluginOptions": { "i18n": { "localized": true } }
+    },
+    "levelBefore": {
+      "type": "string",
+      "pluginOptions": { "i18n": { "localized": true } }
+    },
+    "result": {
+      "type": "text",
+      "pluginOptions": { "i18n": { "localized": true } }
+    },
+    "duration": {
+      "type": "string",
+      "pluginOptions": { "i18n": { "localized": true } }
+    },
+    "videoUrl": {
+      "type": "string"
+    },
+    "verified": {
+      "type": "boolean",
+      "default": false
+    },
+    "rating": {
+      "type": "integer",
+      "min": 1,
+      "max": 5,
+      "default": 5
+    },
+    "course": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::course.course"
+    },
+    "studentType": {
+      "type": "string",
+      "pluginOptions": { "i18n": { "localized": true } }
+    },
+    "featured": {
+      "type": "boolean",
+      "default": false
+    },
+    "enabled": {
+      "type": "boolean",
+      "default": true
+    },
+    "sortOrder": {
+      "type": "integer",
+      "default": 0
+    }
+  }
+}

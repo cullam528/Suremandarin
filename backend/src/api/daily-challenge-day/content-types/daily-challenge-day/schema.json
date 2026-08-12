@@ -1,0 +1,26 @@
+{
+  "kind": "collectionType",
+  "collectionName": "daily_challenge_days",
+  "info": {
+    "singularName": "daily-challenge-day",
+    "pluralName": "daily-challenge-days",
+    "displayName": "03 学习 · Daily 7天挑战内容"
+  },
+  "options": { "draftAndPublish": true },
+  "attributes": {
+    "dayNumber": { "type": "integer", "required": true, "min": 1, "max": 7 },
+    "slug": { "type": "uid", "targetField": "titleEn", "required": true },
+    "titleEn": { "type": "string", "required": true },
+    "titleZh": { "type": "string", "required": true },
+    "phraseZh": { "type": "string", "required": true },
+    "phraseEn": { "type": "string", "required": true },
+    "promptEn": { "type": "text" },
+    "promptZh": { "type": "text" },
+    "category": { "type": "string" },
+    "estimatedMinutes": { "type": "integer", "default": 5 },
+    "image": { "type": "media", "multiple": false, "allowedTypes": ["images"] },
+    "audioUrl": { "type": "string" },
+    "enabled": { "type": "boolean", "default": true },
+    "sortOrder": { "type": "integer", "default": 0 }
+  }
+}

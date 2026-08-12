@@ -1,0 +1,41 @@
+{
+  "kind": "collectionType",
+  "collectionName": "lesson_credits",
+  "info": {
+    "singularName": "lesson-credit",
+    "pluralName": "lesson-credits",
+    "displayName": "03 学习 · 课时奖励"
+  },
+  "options": { "draftAndPublish": false },
+  "attributes": {
+    "user": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "plugin::users-permissions.user"
+    },
+    "hours": {
+      "type": "decimal",
+      "required": true,
+      "default": 0
+    },
+    "source": {
+      "type": "enumeration",
+      "enum": ["daily-challenge", "referral", "purchase", "manual"],
+      "default": "manual"
+    },
+    "sourceKey": {
+      "type": "string",
+      "required": true,
+      "unique": true
+    },
+    "status": {
+      "type": "enumeration",
+      "enum": ["pending-review", "available", "reserved", "used", "expired", "revoked"],
+      "default": "available"
+    },
+    "grantedAt": { "type": "datetime", "required": true },
+    "expiresAt": { "type": "datetime" },
+    "usedAt": { "type": "datetime" },
+    "notes": { "type": "text" }
+  }
+}

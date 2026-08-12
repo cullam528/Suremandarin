@@ -1,0 +1,29 @@
+{
+  "collectionName": "components_shared_seo",
+  "info": {
+    "displayName": "SEO 设置"
+  },
+  "options": {},
+  "attributes": {
+    "metaTitle": {
+      "type": "string"
+    },
+    "metaDescription": {
+      "type": "text"
+    },
+    "keywords": {
+      "type": "string"
+    },
+    "shareImage": {
+      "type": "media",
+      "multiple": false,
+      "allowedTypes": [
+        "images"
+      ]
+    },
+    "noIndex": {
+      "type": "boolean",
+      "default": false
+    }
+  }
+}

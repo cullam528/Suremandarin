@@ -1,0 +1,61 @@
+{
+  "kind": "collectionType",
+  "collectionName": "learning_progresss",
+  "info": {
+    "singularName": "learning-progress",
+    "pluralName": "learning-progresses",
+    "displayName": "03 学习 · 学习进度"
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "user": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "plugin::users-permissions.user"
+    },
+    "course": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::course.course"
+    },
+    "module": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::course-module.course-module"
+    },
+    "lesson": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::lesson.lesson"
+    },
+    "progressPercent": {
+      "type": "decimal",
+      "min": 0,
+      "max": 100,
+      "default": 0
+    },
+    "videoPositionSeconds": {
+      "type": "integer",
+      "default": 0
+    },
+    "completed": {
+      "type": "boolean",
+      "default": false
+    },
+    "lastStudiedAt": {
+      "type": "datetime"
+    },
+    "platform": {
+      "type": "enumeration",
+      "enum": [
+        "web",
+        "miniprogram",
+        "ios",
+        "android"
+      ]
+    }
+  }
+}

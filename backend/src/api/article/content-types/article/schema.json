@@ -1,0 +1,91 @@
+{
+  "kind": "collectionType",
+  "collectionName": "articles",
+  "info": {
+    "singularName": "article",
+    "pluralName": "articles",
+    "displayName": "01 内容 · 知识文章"
+  },
+  "options": {
+    "draftAndPublish": true
+  },
+  "pluginOptions": {
+    "i18n": {
+      "localized": true
+    }
+  },
+  "attributes": {
+    "title": {
+      "type": "string",
+      "required": true,
+      "pluginOptions": { "i18n": { "localized": true } }
+    },
+    "slug": {
+      "type": "uid",
+      "targetField": "title",
+      "required": true
+    },
+    "excerpt": {
+      "type": "text",
+      "pluginOptions": { "i18n": { "localized": true } }
+    },
+    "body": {
+      "type": "customField",
+      "customField": "global::blocknote",
+      "required": true,
+      "pluginOptions": { "i18n": { "localized": true } }
+    },
+    "cover": {
+      "type": "media",
+      "multiple": false,
+      "allowedTypes": [
+        "images"
+      ],
+      "pluginOptions": { "i18n": { "localized": true } }
+    },
+    "imageAlt": {
+      "type": "string",
+      "pluginOptions": { "i18n": { "localized": true } }
+    },
+    "category": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::article-category.article-category",
+      "inversedBy": "articles"
+    },
+    "authorName": {
+      "type": "string",
+      "pluginOptions": { "i18n": { "localized": true } }
+    },
+    "publishDate": {
+      "type": "datetime"
+    },
+    "readingMinutes": {
+      "type": "integer"
+    },
+    "accessLevel": {
+      "type": "enumeration",
+      "enum": [
+        "public",
+        "registered",
+        "vip",
+        "svip"
+      ],
+      "default": "public"
+    },
+    "featured": {
+      "type": "boolean",
+      "default": false
+    },
+    "enabled": {
+      "type": "boolean",
+      "default": true
+    },
+    "seo": {
+      "type": "component",
+      "component": "shared.seo",
+      "repeatable": false,
+      "pluginOptions": { "i18n": { "localized": true } }
+    }
+  }
+}

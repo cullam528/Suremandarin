@@ -1,0 +1,70 @@
+{
+  "kind": "collectionType",
+  "collectionName": "promotions",
+  "info": {
+    "singularName": "promotion",
+    "pluralName": "promotions",
+    "displayName": "05 营销 · 优惠活动"
+  },
+  "options": {
+    "draftAndPublish": true
+  },
+  "pluginOptions": {
+    "i18n": {
+      "localized": true
+    }
+  },
+  "attributes": {
+    "name": {
+      "type": "string",
+      "required": true,
+      "pluginOptions": { "i18n": { "localized": true } }
+    },
+    "description": {
+      "type": "text",
+      "pluginOptions": { "i18n": { "localized": true } }
+    },
+    "image": {
+      "type": "media",
+      "multiple": false,
+      "allowedTypes": [
+        "images"
+      ],
+      "pluginOptions": { "i18n": { "localized": true } }
+    },
+    "discountType": {
+      "type": "enumeration",
+      "enum": [
+        "percentage",
+        "fixed"
+      ],
+      "default": "percentage"
+    },
+    "discountValue": {
+      "type": "decimal"
+    },
+    "plans": {
+      "type": "relation",
+      "relation": "oneToMany",
+      "target": "api::membership-plan.membership-plan"
+    },
+    "courses": {
+      "type": "relation",
+      "relation": "oneToMany",
+      "target": "api::course.course"
+    },
+    "startsAt": {
+      "type": "datetime"
+    },
+    "endsAt": {
+      "type": "datetime"
+    },
+    "usageLimit": {
+      "type": "integer"
+    },
+    "enabled": {
+      "type": "boolean",
+      "default": true
+    }
+  }
+}

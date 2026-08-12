@@ -1,0 +1,21 @@
+{
+  "collectionName": "components_shared_social_link",
+  "info": {
+    "displayName": "社交媒体"
+  },
+  "options": {},
+  "attributes": {
+    "platform": {
+      "type": "string",
+      "required": true
+    },
+    "url": {
+      "type": "string",
+      "required": true
+    },
+    "enabled": {
+      "type": "boolean",
+      "default": true
+    }
+  }
+}

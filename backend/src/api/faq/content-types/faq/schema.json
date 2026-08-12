@@ -1,0 +1,53 @@
+{
+  "kind": "collectionType",
+  "collectionName": "faqs",
+  "info": {
+    "singularName": "faq",
+    "pluralName": "faqs",
+    "displayName": "01 内容 · 常见问题"
+  },
+  "options": {
+    "draftAndPublish": true
+  },
+  "pluginOptions": {
+    "i18n": {
+      "localized": true
+    }
+  },
+  "attributes": {
+    "question": {
+      "type": "string",
+      "required": true,
+      "pluginOptions": { "i18n": { "localized": true } }
+    },
+    "answer": {
+      "type": "blocks",
+      "pluginOptions": { "i18n": { "localized": true } }
+    },
+    "category": {
+      "type": "string",
+      "pluginOptions": { "i18n": { "localized": true } }
+    },
+    "audience": {
+      "type": "enumeration",
+      "enum": [
+        "all",
+        "registered",
+        "vip",
+        "svip"
+      ],
+      "default": "all"
+    },
+    "platforms": {
+      "type": "json"
+    },
+    "enabled": {
+      "type": "boolean",
+      "default": true
+    },
+    "sortOrder": {
+      "type": "integer",
+      "default": 0
+    }
+  }
+}

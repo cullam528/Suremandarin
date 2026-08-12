@@ -1,0 +1,131 @@
+{
+  "kind": "collectionType",
+  "collectionName": "inquirys",
+  "info": {
+    "singularName": "inquiry",
+    "pluralName": "inquiries",
+    "displayName": "05 营销 · 咨询线索"
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "name": {
+      "type": "string",
+      "required": true
+    },
+    "email": {
+      "type": "email",
+      "required": true
+    },
+    "courseSlug": {
+      "type": "string",
+      "required": true
+    },
+    "currentLevel": {
+      "type": "enumeration",
+      "enum": ["beginner", "intermediate", "advanced", "not-sure"]
+    },
+    "learningGoal": {
+      "type": "string"
+    },
+    "preferredTime": {
+      "type": "string"
+    },
+    "phone": {
+      "type": "string"
+    },
+    "whatsapp": {
+      "type": "string"
+    },
+    "wechat": {
+      "type": "string"
+    },
+    "targetCourse": {
+      "type": "string"
+    },
+    "weeklyStudyTime": {
+      "type": "string"
+    },
+    "preferredDate": {
+      "type": "date"
+    },
+    "interestedCourse": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::course.course"
+    },
+    "message": {
+      "type": "text"
+    },
+    "sourcePage": {
+      "type": "string"
+    },
+    "campaign": {
+      "type": "string"
+    },
+    "leadSource": {
+      "type": "string"
+    },
+    "referralCode": {
+      "type": "string"
+    },
+    "timezone": {
+      "type": "string"
+    },
+    "platform": {
+      "type": "enumeration",
+      "enum": [
+        "web",
+        "miniprogram",
+        "ios",
+        "android"
+      ],
+      "default": "web"
+    },
+    "status": {
+      "type": "enumeration",
+      "enum": [
+        "new",
+        "contacted",
+        "following-up",
+        "converted",
+        "closed",
+        "spam"
+      ],
+      "default": "new"
+    },
+    "assignee": {
+      "type": "string"
+    },
+    "internalNotes": {
+      "type": "text"
+    },
+    "privacyConsent": {
+      "type": "boolean",
+      "default": false
+    },
+    "testScore": {
+      "type": "integer"
+    },
+    "testTotal": {
+      "type": "integer"
+    },
+    "testLevel": {
+      "type": "enumeration",
+      "enum": [
+        "beginner",
+        "intermediate",
+        "advanced",
+        "not-sure"
+      ]
+    },
+    "testBreakdown": {
+      "type": "json"
+    },
+    "testAnswers": {
+      "type": "json"
+    }
+  }
+}

@@ -1,0 +1,38 @@
+{
+  "collectionName": "components_shared_hero_slide",
+  "info": {
+    "displayName": "首页幻灯片"
+  },
+  "options": {},
+  "attributes": {
+    "eyebrow": {
+      "type": "string"
+    },
+    "title": {
+      "type": "string",
+      "required": true
+    },
+    "description": {
+      "type": "text"
+    },
+    "image": {
+      "type": "media",
+      "multiple": false,
+      "allowedTypes": [
+        "images"
+      ]
+    },
+    "imageAlt": {
+      "type": "string"
+    },
+    "button": {
+      "type": "component",
+      "component": "shared.cta",
+      "repeatable": false
+    },
+    "enabled": {
+      "type": "boolean",
+      "default": true
+    }
+  }
+}

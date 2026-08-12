@@ -1,0 +1,90 @@
+{
+  "kind": "collectionType",
+  "collectionName": "payment_transactions",
+  "info": {
+    "singularName": "payment-transaction",
+    "pluralName": "payment-transactions",
+    "displayName": "99 系统内部 · 支付流水"
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "transactionNumber": {
+      "type": "uid",
+      "required": true
+    },
+    "order": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::order.order",
+      "inversedBy": "transactions"
+    },
+    "user": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "plugin::users-permissions.user"
+    },
+    "channel": {
+      "type": "enumeration",
+      "enum": [
+        "paypal",
+        "apple",
+        "google-play",
+        "wechat-pay",
+        "manual"
+      ]
+    },
+    "action": {
+      "type": "enumeration",
+      "enum": [
+        "authorize",
+        "capture",
+        "sale",
+        "refund"
+      ]
+    },
+    "externalTransactionId": {
+      "type": "string"
+    },
+    "requestedAmount": {
+      "type": "decimal"
+    },
+    "settledAmount": {
+      "type": "decimal"
+    },
+    "currency": {
+      "type": "enumeration",
+      "enum": [
+        "USD",
+        "CNY",
+        "EUR",
+        "GBP"
+      ],
+      "default": "USD"
+    },
+    "status": {
+      "type": "enumeration",
+      "enum": [
+        "pending",
+        "succeeded",
+        "failed",
+        "reversed"
+      ],
+      "default": "pending"
+    },
+    "failureCode": {
+      "type": "string"
+    },
+    "failureReason": {
+      "type": "text"
+    },
+    "responseSummary": {
+      "type": "json"
+    },
+    "completedAt": {
+      "type": "datetime"
+    }
+  }
+}

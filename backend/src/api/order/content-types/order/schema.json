@@ -1,0 +1,156 @@
+{
+  "kind": "collectionType",
+  "collectionName": "orders",
+  "info": {
+    "singularName": "order",
+    "pluralName": "orders",
+    "displayName": "04 会员与交易 · 订单"
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "orderNumber": {
+      "type": "uid",
+      "required": true
+    },
+    "user": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "plugin::users-permissions.user"
+    },
+    "productType": {
+      "type": "enumeration",
+      "enum": [
+        "membership",
+        "course",
+        "event",
+        "other"
+      ]
+    },
+    "membershipPlan": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::membership-plan.membership-plan"
+    },
+    "course": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::course.course"
+    },
+    "productNameSnapshot": {
+      "type": "string",
+      "required": true
+    },
+    "unitPrice": {
+      "type": "decimal",
+      "required": true
+    },
+    "quantity": {
+      "type": "integer",
+      "default": 1
+    },
+    "lessonHours": {
+      "type": "decimal",
+      "default": 0,
+      "min": 0
+    },
+    "originalAmount": {
+      "type": "decimal"
+    },
+    "discountAmount": {
+      "type": "decimal",
+      "default": 0
+    },
+    "paidAmount": {
+      "type": "decimal"
+    },
+    "currency": {
+      "type": "enumeration",
+      "enum": [
+        "USD",
+        "CNY",
+        "EUR",
+        "GBP"
+      ],
+      "default": "USD"
+    },
+    "channel": {
+      "type": "enumeration",
+      "enum": [
+        "paypal",
+        "apple",
+        "google-play",
+        "wechat-pay",
+        "manual"
+      ]
+    },
+    "externalOrderId": {
+      "type": "string"
+    },
+    "orderStatus": {
+      "type": "enumeration",
+      "enum": [
+        "pending",
+        "awaiting-payment",
+        "paid",
+        "completed",
+        "cancelled",
+        "refunding",
+        "refunded",
+        "failed",
+        "expired",
+        "disputed"
+      ],
+      "default": "pending"
+    },
+    "paymentStatus": {
+      "type": "enumeration",
+      "enum": [
+        "unpaid",
+        "authorized",
+        "paid",
+        "partially-refunded",
+        "refunded",
+        "failed"
+      ],
+      "default": "unpaid"
+    },
+    "platform": {
+      "type": "enumeration",
+      "enum": [
+        "web",
+        "miniprogram",
+        "ios",
+        "android",
+        "admin"
+      ],
+      "default": "web"
+    },
+    "paidAt": {
+      "type": "datetime"
+    },
+    "cancelledAt": {
+      "type": "datetime"
+    },
+    "completedAt": {
+      "type": "datetime"
+    },
+    "couponCode": {
+      "type": "string"
+    },
+    "invoiceInfo": {
+      "type": "json"
+    },
+    "internalNotes": {
+      "type": "text"
+    },
+    "transactions": {
+      "type": "relation",
+      "relation": "oneToMany",
+      "target": "api::payment-transaction.payment-transaction",
+      "mappedBy": "order"
+    }
+  }
+}

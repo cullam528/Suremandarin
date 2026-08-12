@@ -1,0 +1,61 @@
+{
+  "kind": "collectionType",
+  "collectionName": "announcements",
+  "info": {
+    "singularName": "announcement",
+    "pluralName": "announcements",
+    "displayName": "06 运营 · 公告"
+  },
+  "options": {
+    "draftAndPublish": true
+  },
+  "pluginOptions": {
+    "i18n": {
+      "localized": true
+    }
+  },
+  "attributes": {
+    "title": {
+      "type": "string",
+      "required": true,
+      "pluginOptions": { "i18n": { "localized": true } }
+    },
+    "content": {
+      "type": "blocks",
+      "pluginOptions": { "i18n": { "localized": true } }
+    },
+    "level": {
+      "type": "enumeration",
+      "enum": [
+        "info",
+        "success",
+        "warning",
+        "urgent"
+      ],
+      "default": "info"
+    },
+    "audience": {
+      "type": "enumeration",
+      "enum": [
+        "all",
+        "registered",
+        "vip",
+        "svip"
+      ],
+      "default": "all"
+    },
+    "platforms": {
+      "type": "json"
+    },
+    "startsAt": {
+      "type": "datetime"
+    },
+    "endsAt": {
+      "type": "datetime"
+    },
+    "enabled": {
+      "type": "boolean",
+      "default": true
+    }
+  }
+}

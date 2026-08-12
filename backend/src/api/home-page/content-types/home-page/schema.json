@@ -1,0 +1,75 @@
+{
+  "kind": "singleType",
+  "collectionName": "home_pages",
+  "info": {
+    "singularName": "home-page",
+    "pluralName": "home-pages",
+    "displayName": "01 内容 · 首页管理"
+  },
+  "options": {
+    "draftAndPublish": true
+  },
+  "pluginOptions": {
+    "i18n": {
+      "localized": true
+    }
+  },
+  "attributes": {
+    "pageTitle": {
+      "type": "string",
+      "required": true,
+      "pluginOptions": { "i18n": { "localized": true } }
+    },
+    "pageDescription": {
+      "type": "text",
+      "pluginOptions": { "i18n": { "localized": true } }
+    },
+    "heroSlides": {
+      "type": "component",
+      "component": "shared.hero-slide",
+      "repeatable": true,
+      "pluginOptions": { "i18n": { "localized": true } }
+    },
+    "courseSectionTitle": {
+      "type": "string",
+      "pluginOptions": { "i18n": { "localized": true } }
+    },
+    "featuredCourses": {
+      "type": "relation",
+      "relation": "oneToMany",
+      "target": "api::course.course"
+    },
+    "knowledgeSectionTitle": {
+      "type": "string",
+      "pluginOptions": { "i18n": { "localized": true } }
+    },
+    "featuredArticles": {
+      "type": "relation",
+      "relation": "oneToMany",
+      "target": "api::article.article"
+    },
+    "testimonialSectionTitle": {
+      "type": "string",
+      "pluginOptions": { "i18n": { "localized": true } }
+    },
+    "featuredTestimonials": {
+      "type": "relation",
+      "relation": "oneToMany",
+      "target": "api::testimonial.testimonial"
+    },
+    "newsletterTitle": {
+      "type": "string",
+      "pluginOptions": { "i18n": { "localized": true } }
+    },
+    "newsletterDescription": {
+      "type": "text",
+      "pluginOptions": { "i18n": { "localized": true } }
+    },
+    "seo": {
+      "type": "component",
+      "component": "shared.seo",
+      "repeatable": false,
+      "pluginOptions": { "i18n": { "localized": true } }
+    }
+  }
+}

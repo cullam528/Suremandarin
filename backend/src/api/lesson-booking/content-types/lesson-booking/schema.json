@@ -1,0 +1,54 @@
+{
+  "kind": "collectionType",
+  "collectionName": "lesson_bookings",
+  "info": {
+    "singularName": "lesson-booking",
+    "pluralName": "lesson-bookings",
+    "displayName": "03 学习 · 老师预约"
+  },
+  "options": { "draftAndPublish": false },
+  "attributes": {
+    "user": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "plugin::users-permissions.user",
+      "required": true
+    },
+    "course": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::course.course",
+      "required": true
+    },
+    "teacherUser": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "plugin::users-permissions.user"
+    },
+    "teacherName": { "type": "string" },
+    "requestedStartAt": { "type": "datetime", "required": true },
+    "requestedEndAt": { "type": "datetime" },
+    "timezone": { "type": "string", "required": true },
+    "status": {
+      "type": "enumeration",
+      "enum": ["requested", "confirmed", "completed", "cancelled"],
+      "default": "requested"
+    },
+    "source": {
+      "type": "enumeration",
+      "enum": ["web", "miniprogram", "ios", "android", "admin"],
+      "default": "web"
+    },
+    "notes": { "type": "text" },
+    "adminNotes": { "type": "text" },
+    "reservedCredit": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::lesson-credit.lesson-credit"
+    },
+    "requestedAt": { "type": "datetime", "required": true },
+    "confirmedAt": { "type": "datetime" },
+    "completedAt": { "type": "datetime" },
+    "cancelledAt": { "type": "datetime" }
+  }
+}

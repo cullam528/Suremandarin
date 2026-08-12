@@ -1,0 +1,65 @@
+{
+  "kind": "collectionType",
+  "collectionName": "webhook_events",
+  "info": {
+    "singularName": "webhook-event",
+    "pluralName": "webhook-events",
+    "displayName": "99 系统内部 · Webhook 日志"
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "provider": {
+      "type": "enumeration",
+      "enum": [
+        "paypal",
+        "apple",
+        "google-play",
+        "wechat-pay"
+      ]
+    },
+    "externalEventId": {
+      "type": "string",
+      "required": true,
+      "unique": true
+    },
+    "eventType": {
+      "type": "string",
+      "required": true
+    },
+    "receivedAt": {
+      "type": "datetime"
+    },
+    "signatureValid": {
+      "type": "boolean",
+      "default": false
+    },
+    "processed": {
+      "type": "boolean",
+      "default": false
+    },
+    "processingAttempts": {
+      "type": "integer",
+      "default": 0
+    },
+    "order": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::order.order"
+    },
+    "subscription": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::membership-subscription.membership-subscription"
+    },
+    "errorMessage": {
+      "type": "text"
+    },
+    "payload": {
+      "type": "json",
+      "private": true
+    }
+  }
+}

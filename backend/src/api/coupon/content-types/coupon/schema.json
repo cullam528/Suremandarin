@@ -1,0 +1,55 @@
+{
+  "kind": "collectionType",
+  "collectionName": "coupons",
+  "info": {
+    "singularName": "coupon",
+    "pluralName": "coupons",
+    "displayName": "05 营销 · 优惠码"
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "code": {
+      "type": "string",
+      "required": true,
+      "unique": true
+    },
+    "discountType": {
+      "type": "enumeration",
+      "enum": [
+        "percentage",
+        "fixed"
+      ],
+      "default": "percentage"
+    },
+    "discountValue": {
+      "type": "decimal"
+    },
+    "minimumAmount": {
+      "type": "decimal"
+    },
+    "startsAt": {
+      "type": "datetime"
+    },
+    "endsAt": {
+      "type": "datetime"
+    },
+    "totalUsageLimit": {
+      "type": "integer"
+    },
+    "perUserLimit": {
+      "type": "integer",
+      "default": 1
+    },
+    "usedCount": {
+      "type": "integer",
+      "default": 0
+    },
+    "enabled": {
+      "type": "boolean",
+      "default": true
+    }
+  }
+}

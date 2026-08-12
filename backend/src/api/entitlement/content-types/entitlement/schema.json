@@ -1,0 +1,75 @@
+{
+  "kind": "collectionType",
+  "collectionName": "entitlements",
+  "info": {
+    "singularName": "entitlement",
+    "pluralName": "entitlements",
+    "displayName": "04 会员与交易 · 权益记录"
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "user": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "plugin::users-permissions.user"
+    },
+    "code": {
+      "type": "string",
+      "required": true
+    },
+    "name": {
+      "type": "string",
+      "required": true
+    },
+    "source": {
+      "type": "enumeration",
+      "enum": [
+        "membership",
+        "order",
+        "gift",
+        "admin"
+      ]
+    },
+    "order": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::order.order"
+    },
+    "subscription": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::membership-subscription.membership-subscription"
+    },
+    "startsAt": {
+      "type": "datetime"
+    },
+    "expiresAt": {
+      "type": "datetime"
+    },
+    "status": {
+      "type": "enumeration",
+      "enum": [
+        "active",
+        "expired",
+        "revoked"
+      ],
+      "default": "active"
+    },
+    "usageLimit": {
+      "type": "integer"
+    },
+    "usedCount": {
+      "type": "integer",
+      "default": 0
+    },
+    "platforms": {
+      "type": "json"
+    },
+    "internalNotes": {
+      "type": "text"
+    }
+  }
+}

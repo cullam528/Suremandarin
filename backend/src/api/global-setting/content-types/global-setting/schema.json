@@ -1,0 +1,106 @@
+{
+  "kind": "singleType",
+  "collectionName": "global_settings",
+  "info": {
+    "singularName": "global-setting",
+    "pluralName": "global-settings",
+    "displayName": "07 设置 · 网站设置"
+  },
+  "options": {
+    "draftAndPublish": true
+  },
+  "pluginOptions": {
+    "i18n": {
+      "localized": true
+    }
+  },
+  "attributes": {
+    "siteName": {
+      "type": "string",
+      "required": true
+    },
+    "logo": {
+      "type": "media",
+      "multiple": false,
+      "allowedTypes": [
+        "images"
+      ]
+    },
+    "favicon": {
+      "type": "media",
+      "multiple": false,
+      "allowedTypes": [
+        "images"
+      ]
+    },
+    "defaultLanguage": {
+      "type": "enumeration",
+      "enum": [
+        "en",
+        "zh-CN"
+      ],
+      "default": "en"
+    },
+    "contactTitle": {
+      "type": "string",
+      "pluginOptions": { "i18n": { "localized": true } }
+    },
+    "contactDescription": {
+      "type": "text",
+      "pluginOptions": { "i18n": { "localized": true } }
+    },
+    "contactAgentImage": {
+      "type": "media",
+      "multiple": false,
+      "allowedTypes": [
+        "images"
+      ]
+    },
+    "contactMethods": {
+      "type": "component",
+      "component": "shared.contact-method",
+      "repeatable": true,
+      "pluginOptions": { "i18n": { "localized": true } }
+    },
+    "socialLinks": {
+      "type": "component",
+      "component": "shared.social-link",
+      "repeatable": true,
+      "pluginOptions": { "i18n": { "localized": true } }
+    },
+    "wechatQrCode": {
+      "type": "media",
+      "multiple": false,
+      "allowedTypes": [
+        "images"
+      ]
+    },
+    "whatsappQrCode": {
+      "type": "media",
+      "multiple": false,
+      "allowedTypes": [
+        "images"
+      ]
+    },
+    "footerDescription": {
+      "type": "text",
+      "pluginOptions": { "i18n": { "localized": true } }
+    },
+    "copyright": {
+      "type": "string",
+      "pluginOptions": { "i18n": { "localized": true } }
+    },
+    "privacyUrl": {
+      "type": "string"
+    },
+    "termsUrl": {
+      "type": "string"
+    },
+    "defaultSeo": {
+      "type": "component",
+      "component": "shared.seo",
+      "repeatable": false,
+      "pluginOptions": { "i18n": { "localized": true } }
+    }
+  }
+}

@@ -1,0 +1,107 @@
+{
+  "kind": "collectionType",
+  "collectionName": "lessons",
+  "info": {
+    "singularName": "lesson",
+    "pluralName": "lessons",
+    "displayName": "02 课程 · 课时内容"
+  },
+  "options": {
+    "draftAndPublish": true
+  },
+  "pluginOptions": {
+    "i18n": {
+      "localized": true
+    }
+  },
+  "attributes": {
+    "title": {
+      "type": "string",
+      "required": true,
+      "pluginOptions": { "i18n": { "localized": true } }
+    },
+    "slug": {
+      "type": "uid",
+      "targetField": "title",
+      "required": true
+    },
+    "lessonType": {
+      "type": "enumeration",
+      "enum": [
+        "article",
+        "video",
+        "audio",
+        "live",
+        "quiz",
+        "download",
+        "external-link"
+      ],
+      "default": "article"
+    },
+    "module": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::course-module.course-module",
+      "inversedBy": "lessons"
+    },
+    "summary": {
+      "type": "text",
+      "pluginOptions": { "i18n": { "localized": true } }
+    },
+    "body": {
+      "type": "blocks",
+      "pluginOptions": { "i18n": { "localized": true } }
+    },
+    "video": {
+      "type": "media",
+      "multiple": false,
+      "allowedTypes": [
+        "videos"
+      ]
+    },
+    "audio": {
+      "type": "media",
+      "multiple": false,
+      "allowedTypes": [
+        "audios"
+      ]
+    },
+    "attachment": {
+      "type": "media",
+      "multiple": true,
+      "allowedTypes": [
+        "files"
+      ]
+    },
+    "subtitles": {
+      "type": "media",
+      "multiple": true,
+      "allowedTypes": [
+        "files"
+      ]
+    },
+    "externalUrl": {
+      "type": "string"
+    },
+    "durationMinutes": {
+      "type": "integer"
+    },
+    "preview": {
+      "type": "boolean",
+      "default": false
+    },
+    "accessLevel": {
+      "type": "enumeration",
+      "enum": [
+        "registered",
+        "vip",
+        "svip"
+      ],
+      "default": "registered"
+    },
+    "sortOrder": {
+      "type": "integer",
+      "default": 0
+    }
+  }
+}

@@ -1,0 +1,57 @@
+{
+  "kind": "collectionType",
+  "collectionName": "newsletter_subscriptions",
+  "info": {
+    "singularName": "newsletter-subscription",
+    "pluralName": "newsletter-subscriptions",
+    "displayName": "05 营销 · 邮件订阅"
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "email": {
+      "type": "email",
+      "required": true,
+      "unique": true
+    },
+    "name": {
+      "type": "string"
+    },
+    "locale": {
+      "type": "string"
+    },
+    "sourcePage": {
+      "type": "string"
+    },
+    "platform": {
+      "type": "enumeration",
+      "enum": [
+        "web",
+        "miniprogram",
+        "ios",
+        "android"
+      ],
+      "default": "web"
+    },
+    "consent": {
+      "type": "boolean",
+      "default": true
+    },
+    "status": {
+      "type": "enumeration",
+      "enum": [
+        "subscribed",
+        "unsubscribed"
+      ],
+      "default": "subscribed"
+    },
+    "subscribedAt": {
+      "type": "datetime"
+    },
+    "unsubscribedAt": {
+      "type": "datetime"
+    }
+  }
+}

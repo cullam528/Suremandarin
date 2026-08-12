@@ -1,0 +1,100 @@
+{
+  "kind": "collectionType",
+  "collectionName": "refunds",
+  "info": {
+    "singularName": "refund",
+    "pluralName": "refunds",
+    "displayName": "99 系统内部 · 退款管理"
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "refundNumber": {
+      "type": "uid",
+      "required": true
+    },
+    "order": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::order.order"
+    },
+    "transaction": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::payment-transaction.payment-transaction"
+    },
+    "user": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "plugin::users-permissions.user"
+    },
+    "amount": {
+      "type": "decimal",
+      "required": true
+    },
+    "currency": {
+      "type": "enumeration",
+      "enum": [
+        "USD",
+        "CNY",
+        "EUR",
+        "GBP"
+      ],
+      "default": "USD"
+    },
+    "reason": {
+      "type": "text"
+    },
+    "refundType": {
+      "type": "enumeration",
+      "enum": [
+        "full",
+        "partial"
+      ],
+      "default": "full"
+    },
+    "channel": {
+      "type": "enumeration",
+      "enum": [
+        "paypal",
+        "apple",
+        "google-play",
+        "wechat-pay",
+        "manual"
+      ]
+    },
+    "externalRefundId": {
+      "type": "string"
+    },
+    "status": {
+      "type": "enumeration",
+      "enum": [
+        "requested",
+        "approved",
+        "processing",
+        "completed",
+        "failed",
+        "rejected"
+      ],
+      "default": "requested"
+    },
+    "requestedBy": {
+      "type": "string"
+    },
+    "approvedBy": {
+      "type": "string"
+    },
+    "completedAt": {
+      "type": "datetime"
+    },
+    "failureReason": {
+      "type": "text"
+    },
+    "revokeEntitlements": {
+      "type": "boolean",
+      "default": true
+    }
+  }
+}

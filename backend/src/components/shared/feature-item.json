@@ -1,0 +1,19 @@
+{
+  "collectionName": "components_shared_feature_item",
+  "info": {
+    "displayName": "内容亮点"
+  },
+  "options": {},
+  "attributes": {
+    "icon": {
+      "type": "string"
+    },
+    "title": {
+      "type": "string",
+      "required": true
+    },
+    "description": {
+      "type": "text"
+    }
+  }
+}

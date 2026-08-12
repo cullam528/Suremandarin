@@ -1,0 +1,30 @@
+{
+  "collectionName": "components_shared_cta",
+  "info": {
+    "displayName": "操作按钮"
+  },
+  "options": {},
+  "attributes": {
+    "label": {
+      "type": "string",
+      "required": true
+    },
+    "href": {
+      "type": "string",
+      "required": true
+    },
+    "style": {
+      "type": "enumeration",
+      "enum": [
+        "primary",
+        "secondary",
+        "text"
+      ],
+      "default": "primary"
+    },
+    "newWindow": {
+      "type": "boolean",
+      "default": false
+    }
+  }
+}

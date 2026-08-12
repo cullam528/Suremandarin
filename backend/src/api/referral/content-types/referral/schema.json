@@ -1,0 +1,99 @@
+{
+  "kind": "collectionType",
+  "collectionName": "referrals",
+  "info": {
+    "singularName": "referral",
+    "pluralName": "referrals",
+    "displayName": "06 营销 · 推荐记录"
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "referralCode": {
+      "type": "string",
+      "required": true
+    },
+    "sourceChannel": {
+      "type": "enumeration",
+      "enum": [
+        "website",
+        "whatsapp",
+        "facebook",
+        "email",
+        "miniprogram",
+        "ios",
+        "android",
+        "other"
+      ],
+      "default": "website"
+    },
+    "referrer": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "plugin::users-permissions.user"
+    },
+    "referredUser": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "plugin::users-permissions.user"
+    },
+    "course": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::course.course"
+    },
+    "order": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::order.order"
+    },
+    "rewardStatus": {
+      "type": "enumeration",
+      "enum": [
+        "pending",
+        "approved",
+        "paid",
+        "rejected"
+      ],
+      "default": "pending"
+    },
+    "rewardAmount": {
+      "type": "decimal",
+      "default": 0
+    },
+    "rewardHours": {
+      "type": "decimal",
+      "default": 0
+    },
+    "rewardBatchKey": {
+      "type": "string"
+    },
+    "qualifiedAt": {
+      "type": "datetime"
+    },
+    "refundWindowEndsAt": {
+      "type": "datetime"
+    },
+    "rewardCurrency": {
+      "type": "enumeration",
+      "enum": [
+        "USD",
+        "CNY",
+        "EUR",
+        "GBP"
+      ],
+      "default": "USD"
+    },
+    "registeredAt": {
+      "type": "datetime"
+    },
+    "enrolledAt": {
+      "type": "datetime"
+    },
+    "notes": {
+      "type": "text"
+    }
+  }
+}

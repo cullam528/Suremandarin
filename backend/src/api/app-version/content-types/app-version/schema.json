@@ -1,0 +1,46 @@
+{
+  "kind": "collectionType",
+  "collectionName": "app_versions",
+  "info": {
+    "singularName": "app-version",
+    "pluralName": "app-versions",
+    "displayName": "06 运营 · 客户端版本"
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "platform": {
+      "type": "enumeration",
+      "enum": [
+        "ios",
+        "android",
+        "miniprogram"
+      ],
+      "default": "ios"
+    },
+    "currentVersion": {
+      "type": "string",
+      "required": true
+    },
+    "minimumVersion": {
+      "type": "string",
+      "required": true
+    },
+    "downloadUrl": {
+      "type": "string"
+    },
+    "forceUpdate": {
+      "type": "boolean",
+      "default": false
+    },
+    "releaseNotes": {
+      "type": "text"
+    },
+    "enabled": {
+      "type": "boolean",
+      "default": true
+    }
+  }
+}

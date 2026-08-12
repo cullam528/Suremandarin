@@ -1,0 +1,100 @@
+{
+  "kind": "collectionType",
+  "collectionName": "membership_subscriptions",
+  "info": {
+    "singularName": "membership-subscription",
+    "pluralName": "membership-subscriptions",
+    "displayName": "04 会员与交易 · 会员订阅"
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "subscriptionNumber": {
+      "type": "uid",
+      "required": true
+    },
+    "user": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "plugin::users-permissions.user"
+    },
+    "plan": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::membership-plan.membership-plan"
+    },
+    "channel": {
+      "type": "enumeration",
+      "enum": [
+        "paypal",
+        "apple",
+        "google-play",
+        "wechat-pay",
+        "manual",
+        "gift-code",
+        "admin-grant"
+      ]
+    },
+    "externalSubscriptionId": {
+      "type": "string"
+    },
+    "status": {
+      "type": "enumeration",
+      "enum": [
+        "trial",
+        "active",
+        "past-due",
+        "suspended",
+        "cancelled",
+        "expired",
+        "refunded"
+      ],
+      "default": "active"
+    },
+    "startedAt": {
+      "type": "datetime"
+    },
+    "currentPeriodStart": {
+      "type": "datetime"
+    },
+    "currentPeriodEnd": {
+      "type": "datetime"
+    },
+    "nextBillingAt": {
+      "type": "datetime"
+    },
+    "autoRenew": {
+      "type": "boolean",
+      "default": true
+    },
+    "cancelledAt": {
+      "type": "datetime"
+    },
+    "cancellationReason": {
+      "type": "text"
+    },
+    "trialEndsAt": {
+      "type": "datetime"
+    },
+    "lastPaidAt": {
+      "type": "datetime"
+    },
+    "lastFailedAt": {
+      "type": "datetime"
+    },
+    "failedPaymentCount": {
+      "type": "integer",
+      "default": 0
+    },
+    "order": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::order.order"
+    },
+    "internalNotes": {
+      "type": "text"
+    }
+  }
+}

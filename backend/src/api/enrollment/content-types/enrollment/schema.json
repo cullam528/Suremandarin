@@ -1,0 +1,55 @@
+{
+  "kind": "collectionType",
+  "collectionName": "enrollments",
+  "info": {
+    "singularName": "enrollment",
+    "pluralName": "enrollments",
+    "displayName": "03 学习 · 课程加入记录"
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "user": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "plugin::users-permissions.user"
+    },
+    "course": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::course.course"
+    },
+    "source": {
+      "type": "enumeration",
+      "enum": [
+        "membership",
+        "purchase",
+        "gift",
+        "admin"
+      ]
+    },
+    "order": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::order.order"
+    },
+    "enrolledAt": {
+      "type": "datetime"
+    },
+    "expiresAt": {
+      "type": "datetime"
+    },
+    "status": {
+      "type": "enumeration",
+      "enum": [
+        "active",
+        "completed",
+        "expired",
+        "revoked"
+      ],
+      "default": "active"
+    }
+  }
+}

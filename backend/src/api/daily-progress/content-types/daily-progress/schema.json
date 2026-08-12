@@ -1,0 +1,18 @@
+{
+  "kind": "collectionType",
+  "collectionName": "daily_progresses",
+  "info": {
+    "singularName": "daily-progress",
+    "pluralName": "daily-progresses",
+    "displayName": "03 学习 · Daily 打卡进度"
+  },
+  "options": { "draftAndPublish": false },
+  "attributes": {
+    "user": { "type": "relation", "relation": "manyToOne", "target": "plugin::users-permissions.user" },
+    "dayNumber": { "type": "integer", "required": true, "min": 1, "max": 7 },
+    "completedAt": { "type": "datetime", "required": true },
+    "streak": { "type": "integer", "default": 1 },
+    "source": { "type": "string", "default": "daily-challenge" },
+    "platform": { "type": "enumeration", "enum": ["web", "miniprogram", "ios", "android"], "default": "web" }
+  }
+}

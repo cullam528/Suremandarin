@@ -1,0 +1,78 @@
+{
+  "kind": "collectionType",
+  "collectionName": "app_banners",
+  "info": {
+    "singularName": "app-banner",
+    "pluralName": "app-banners",
+    "displayName": "06 运营 · 多端 Banner"
+  },
+  "options": {
+    "draftAndPublish": true
+  },
+  "pluginOptions": {
+    "i18n": {
+      "localized": true
+    }
+  },
+  "attributes": {
+    "title": {
+      "type": "string",
+      "required": true,
+      "pluginOptions": { "i18n": { "localized": true } }
+    },
+    "description": {
+      "type": "text",
+      "pluginOptions": { "i18n": { "localized": true } }
+    },
+    "image": {
+      "type": "media",
+      "multiple": false,
+      "allowedTypes": [
+        "images"
+      ],
+      "pluginOptions": { "i18n": { "localized": true } }
+    },
+    "targetType": {
+      "type": "enumeration",
+      "enum": [
+        "url",
+        "course",
+        "article",
+        "membership",
+        "none"
+      ],
+      "default": "none"
+    },
+    "targetUrl": {
+      "type": "string",
+      "pluginOptions": { "i18n": { "localized": true } }
+    },
+    "course": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::course.course"
+    },
+    "article": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::article.article"
+    },
+    "platforms": {
+      "type": "json"
+    },
+    "startsAt": {
+      "type": "datetime"
+    },
+    "endsAt": {
+      "type": "datetime"
+    },
+    "enabled": {
+      "type": "boolean",
+      "default": true
+    },
+    "sortOrder": {
+      "type": "integer",
+      "default": 0
+    }
+  }
+}

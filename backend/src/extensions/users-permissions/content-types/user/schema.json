@@ -1,0 +1,196 @@
+{
+  "kind": "collectionType",
+  "collectionName": "up_users",
+  "info": {
+    "name": "user",
+    "description": "",
+    "singularName": "user",
+    "pluralName": "users",
+    "displayName": "User"
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "attributes": {
+    "username": {
+      "type": "string",
+      "minLength": 3,
+      "unique": true,
+      "configurable": false,
+      "required": true
+    },
+    "email": {
+      "type": "email",
+      "minLength": 6,
+      "configurable": false,
+      "required": true
+    },
+    "provider": {
+      "type": "string",
+      "configurable": false
+    },
+    "password": {
+      "type": "password",
+      "minLength": 6,
+      "configurable": false,
+      "private": true,
+      "searchable": false
+    },
+    "resetPasswordToken": {
+      "type": "string",
+      "configurable": false,
+      "private": true,
+      "searchable": false
+    },
+    "confirmationToken": {
+      "type": "string",
+      "configurable": false,
+      "private": true,
+      "searchable": false
+    },
+    "confirmed": {
+      "type": "boolean",
+      "default": false,
+      "configurable": false
+    },
+    "blocked": {
+      "type": "boolean",
+      "default": false,
+      "configurable": false
+    },
+    "role": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "plugin::users-permissions.role",
+      "inversedBy": "users",
+      "configurable": false
+    },
+    "displayName": {
+      "type": "string"
+    },
+    "fullName": {
+      "type": "string"
+    },
+    "phone": {
+      "type": "string"
+    },
+    "country": {
+      "type": "string"
+    },
+    "avatar": {
+      "type": "media",
+      "multiple": false,
+      "allowedTypes": [
+        "images"
+      ]
+    },
+    "preferredLanguage": {
+      "type": "enumeration",
+      "enum": [
+        "en",
+        "zh-CN"
+      ],
+      "default": "en"
+    },
+    "timezone": {
+      "type": "string"
+    },
+    "registrationSource": {
+      "type": "string"
+    },
+    "registrationPlatform": {
+      "type": "enumeration",
+      "enum": [
+        "web",
+        "miniprogram",
+        "ios",
+        "android",
+        "admin"
+      ],
+      "default": "web"
+    },
+    "referralCode": {
+      "type": "string",
+      "unique": true
+    },
+    "referredByCode": {
+      "type": "string"
+    },
+    "referralRewardBalance": {
+      "type": "decimal",
+      "default": 0
+    },
+    "referralCount": {
+      "type": "integer",
+      "default": 0
+    },
+    "lastLoginAt": {
+      "type": "datetime"
+    },
+    "marketingConsent": {
+      "type": "boolean",
+      "default": false
+    },
+    "privacyPolicyVersion": {
+      "type": "string"
+    },
+    "privacyConsentAt": {
+      "type": "datetime"
+    },
+    "membershipLevel": {
+      "type": "enumeration",
+      "enum": [
+        "registered",
+        "vip",
+        "svip"
+      ],
+      "default": "registered"
+    },
+    "membershipStatus": {
+      "type": "enumeration",
+      "enum": [
+        "free",
+        "trial",
+        "active",
+        "past-due",
+        "suspended",
+        "cancelled",
+        "expired",
+        "refunded"
+      ],
+      "default": "free"
+    },
+    "membershipStartedAt": {
+      "type": "datetime"
+    },
+    "membershipExpiresAt": {
+      "type": "datetime"
+    },
+    "autoRenew": {
+      "type": "boolean",
+      "default": false
+    },
+    "currentPlan": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::membership-plan.membership-plan"
+    },
+    "membershipChannel": {
+      "type": "enumeration",
+      "enum": [
+        "none",
+        "paypal",
+        "apple",
+        "google-play",
+        "wechat-pay",
+        "manual",
+        "gift-code",
+        "admin-grant"
+      ],
+      "default": "none"
+    },
+    "lastPaymentAt": {
+      "type": "datetime"
+    }
+  }
+}
