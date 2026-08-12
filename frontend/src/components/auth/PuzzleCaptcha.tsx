@@ -96,20 +96,20 @@ export function PuzzleCaptcha({
         </button>
       </div>
       <div
-        className="relative h-24 overflow-hidden rounded-xl bg-cover bg-center"
-        style={{ backgroundImage: `url(${challenge?.image ?? "/images/captcha/captcha-lantern.png"})` }}
+        className="relative aspect-[572/96] w-full overflow-hidden rounded-xl bg-contain bg-center bg-no-repeat"
+        style={{ backgroundImage: `url(${challenge?.image ?? "/images/captcha/captcha-lantern.png?v=20260813"})` }}
       >
         <div className="absolute inset-0 bg-brand-navy/10" />
         {challenge && (
           <>
             <span
-              className="absolute top-7 size-10 rounded-lg border-2 border-dashed border-white/90 bg-brand-navy/25 shadow-inner"
-              style={{ left: `calc(${challenge.target}% - 20px)` }}
+              className="absolute top-1/2 size-[clamp(1.75rem,7vw,2.5rem)] -translate-x-1/2 -translate-y-1/2 rounded-lg border-2 border-dashed border-white/90 bg-brand-navy/25 shadow-inner"
+              style={{ left: `${challenge.target}%` }}
               aria-hidden="true"
             />
             <span
-              className={`absolute top-7 grid size-10 place-items-center rounded-lg border-2 border-white bg-white/90 shadow-lg transition-colors ${verified ? "text-emerald-600" : "text-brand-blue"}`}
-              style={{ left: `calc(${position}% - 20px)` }}
+              className={`absolute top-1/2 grid size-[clamp(1.75rem,7vw,2.5rem)] -translate-x-1/2 -translate-y-1/2 place-items-center rounded-lg border-2 border-white bg-white/90 shadow-lg transition-colors ${verified ? "text-emerald-600" : "text-brand-blue"}`}
+              style={{ left: `${position}%` }}
               aria-hidden="true"
             >
               {verified ? <CheckCircle2 size={23} /> : <span className="size-3 rounded-full bg-current" />}

@@ -36,9 +36,9 @@ const state = globalSecurity.__sureMandarinSecurity ?? {
 globalSecurity.__sureMandarinSecurity = state;
 
 const challengeImages = [
-  "/images/captcha/captcha-lantern.png",
-  "/images/captcha/captcha-tea.png",
-  "/images/captcha/captcha-wall.png",
+  "/images/captcha/captcha-lantern.png?v=20260813",
+  "/images/captcha/captcha-tea.png?v=20260813",
+  "/images/captcha/captcha-wall.png?v=20260813",
 ];
 
 // Vercel deployments must set CAPTCHA_SECRET. This bootstrap value keeps the
