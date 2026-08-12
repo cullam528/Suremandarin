@@ -440,6 +440,37 @@ export default {
           background: #F5F8FD !important;
         }
 
+        /* Keep the Strapi mobile drawer full-height. The desktop navigation
+           width rules otherwise make the responsive drawer collapse into a
+           small block at the top-left of the viewport. */
+        @media (max-width: 768px) {
+          nav {
+            box-sizing: border-box !important;
+            width: min(84vw, 300px) !important;
+            min-width: 260px !important;
+            max-width: 300px !important;
+            min-height: 100dvh !important;
+            height: 100dvh !important;
+            max-height: 100dvh !important;
+            overflow-x: hidden !important;
+            overflow-y: auto !important;
+            padding: max(12px, env(safe-area-inset-top)) 10px max(18px, env(safe-area-inset-bottom)) !important;
+          }
+
+          nav a[aria-label],
+          nav button[aria-label] {
+            width: calc(100% - 8px) !important;
+            min-width: 0 !important;
+            max-width: none !important;
+          }
+
+          .sm-nav-brand {
+            width: calc(100% - 8px) !important;
+            box-sizing: border-box !important;
+            margin-top: 4px !important;
+          }
+        }
+
         .sm-content-tree {
           display: grid;
           gap: 4px;
