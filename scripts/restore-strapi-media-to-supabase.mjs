@@ -22,16 +22,22 @@ let uploaded = 0;
 let skipped = 0;
 
 for (const file of files) {
-  if (!backupNames.has(file.name)) {
-    console.warn(`跳过（本地备份中不存在）：${file.name}`);
+  // Strapi's original display name uses hyphens while the generated upload
+  // filename in `url` uses underscores plus the hash. Match either form.
+  const urlName = String(file.url || '').split('/').pop() || '';
+  const normalized = file.name.replaceAll('-', '_');
+  const candidates = [file.name, urlName, normalized];
+  const localName = candidates.find((candidate) => backupNames.has(candidate));
+  if (!localName) {
+    console.warn(`跳过（本地备份中不存在）：${file.name}；已检查 ${candidates.join(', ')}`);
     skipped += 1;
     continue;
   }
-  const localPath = join(backupDir, file.name);
+  const localPath = join(backupDir, localName);
   const fileStat = await stat(localPath);
   const bytes = await readFile(localPath);
-  const objectPath = `${directory}/${file.name}`;
-  const contentType = file.name.endsWith(".webp") ? "image/webp" : file.name.endsWith(".png") ? "image/png" : file.name.endsWith(".jpg") || file.name.endsWith(".jpeg") ? "image/jpeg" : "application/octet-stream";
+  const objectPath = `${directory}/${localName}`;
+  const contentType = localName.endsWith(".webp") ? "image/webp" : localName.endsWith(".png") ? "image/png" : localName.endsWith(".jpg") || localName.endsWith(".jpeg") ? "image/jpeg" : "application/octet-stream";
   const upload = await fetch(`${supabaseUrl}/storage/v1/object/${bucket}/${objectPath}`, {
     method: "POST",
     headers: { ...headers, "Content-Type": contentType, "x-upsert": "true" },
@@ -47,7 +53,7 @@ for (const file of files) {
   });
   if (!update.ok) throw new Error(`更新媒体记录失败 ${file.name}：${update.status} ${await update.text()}`);
   uploaded += 1;
-  console.log(`已恢复 ${uploaded}/${files.length}：${file.name}`);
+  console.log(`已恢复 ${uploaded}/${files.length}：${file.name} ← ${localName}`);
 }
 
 console.log(`恢复完成：${uploaded} 条，跳过 ${skipped} 条。`);
