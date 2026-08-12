@@ -51,6 +51,16 @@ const config = ({ env }: Core.Config.Shared.ConfigParams): Core.Config.Plugin =>
       },
     },
   },
+  // The optional Releases and Review Workflows panels currently trigger an
+  // admin RTK endpoint error in the Transfer Tokens screen. They are not used
+  // by the SureMandarin publishing flow (draft/publish is sufficient), so keep
+  // them disabled until the upstream admin bundle resolves that incompatibility.
+  'content-releases': {
+    enabled: false,
+  },
+  'review-workflows': {
+    enabled: false,
+  },
   email: {
     config: {
       // Strapi's official Nodemailer provider works with Resend SMTP,
