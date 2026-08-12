@@ -1,4 +1,3 @@
-import { randomBytes } from "node:crypto";
 import { NextResponse } from "next/server";
 import { setAuthCookie, STRAPI_URL } from "@/lib/auth";
 import { allowRequest, verifyPuzzleProof } from "@/lib/puzzle-captcha";
@@ -11,7 +10,7 @@ export async function POST(request: Request) {
         { status: 429 },
       );
     }
-    const { fullName, email, password, marketingConsent, privacyConsent, referralCode, sourceChannel, captcha } =
+    const { fullName, email, password, marketingConsent, privacyConsent, sourceChannel, captcha } =
       await request.json();
     if (!verifyPuzzleProof(captcha)) {
       return NextResponse.json(
@@ -51,8 +50,6 @@ export async function POST(request: Request) {
         marketingConsent: Boolean(marketingConsent),
         privacyPolicyVersion: "2026-08",
         privacyConsentAt: new Date().toISOString(),
-        referralCode: `SM-${randomBytes(4).toString("hex").toUpperCase()}`,
-        referredByCode: referralCode ? String(referralCode).trim().slice(0, 80) : undefined,
       }),
       cache: "no-store",
     });
