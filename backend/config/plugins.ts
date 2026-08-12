@@ -84,10 +84,26 @@ const config = ({ env }: Core.Config.Shared.ConfigParams): Core.Config.Plugin =>
   },
   upload: {
     config: {
+      // Use durable Supabase Storage in production. Keeping the local provider
+      // as a fallback makes local development work before credentials are set.
+      provider: env('SUPABASE_API_URL')
+        ? 'strapi-provider-upload-supabase-bucket'
+        : 'local',
+      providerOptions: env('SUPABASE_API_URL')
+        ? {
+            apiUrl: env('SUPABASE_API_URL'),
+            apiKey: env('SUPABASE_API_KEY'),
+            bucket: env('SUPABASE_BUCKET', 'media'),
+            directory: env('SUPABASE_DIRECTORY', 'uploads'),
+            publicFiles: env.bool('SUPABASE_PUBLIC_FILES', true),
+            signedUrlExpires: env.int('SUPABASE_SIGNED_URL_EXPIRES', 3600),
+          }
+        : {},
       security: {
         allowedTypes: allowedMediaTypes,
         deniedTypes: deniedExecutableTypes,
       },
+      sizeLimit: 50 * 1024 * 1024,
     },
   },
 });
