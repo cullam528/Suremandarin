@@ -37,27 +37,65 @@ async function findAvailableCredit(strapi: any, userId: number) {
     orderBy: { grantedAt: 'asc' },
   });
   const now = Date.now();
-  return credits.find((credit: any) => !credit.expiresAt || new Date(credit.expiresAt).getTime() > now) ?? null;
+  return credits.find((credit: any) => Number(credit.hours ?? 0) > 0 && (!credit.expiresAt || new Date(credit.expiresAt).getTime() > now)) ?? null;
+}
+
+async function reserveOneHour(strapi: any, credit: any, booking: any) {
+  const creditHours = Number(credit.hours ?? 0);
+  if (creditHours <= 0) throw new Error('No available lesson credit remains for this booking.');
+  if (creditHours <= 1) {
+    return strapi.db.query(CREDIT_UID).update({
+      where: { id: credit.id },
+      data: { hours: 1, status: 'reserved', notes: appendNote(credit.notes, `Reserved for lesson booking ${booking.id}.`) },
+    });
+  }
+  await strapi.db.query(CREDIT_UID).update({
+    where: { id: credit.id },
+    data: { hours: Number((creditHours - 1).toFixed(2)) },
+  });
+  return strapi.db.query(CREDIT_UID).create({
+    data: {
+      user: bookingUserId(booking),
+      hours: 1,
+      source: credit.source,
+      sourceKey: `booking-reservation:${booking.id}:${Date.now()}`,
+      status: 'reserved',
+      grantedAt: credit.grantedAt ?? new Date(),
+      expiresAt: credit.expiresAt ?? null,
+      notes: appendNote(credit.notes, `Reserved for lesson booking ${booking.id}.`),
+    },
+  });
 }
 
 async function reserveCredit(strapi: any, userId: number, booking: any) {
   const existingCreditId = asId(booking?.reservedCredit?.id ?? booking?.reservedCredit);
   if (existingCreditId) {
     const existing = await strapi.db.query(CREDIT_UID).findOne({ where: { id: existingCreditId } });
-    if (existing?.status === 'reserved') return existing;
-    if (existing?.status === 'available') {
-      return strapi.db.query(CREDIT_UID).update({
-        where: { id: existing.id },
-        data: { status: 'reserved', notes: appendNote(existing.notes, `Reserved for lesson booking ${booking.id}.`) },
+    if (existing?.status === 'reserved') {
+      const existingHours = Number(existing.hours ?? 0);
+      if (existingHours <= 1) return existing;
+      await strapi.db.query(CREDIT_UID).update({ where: { id: existing.id }, data: { hours: 1 } });
+      await strapi.db.query(CREDIT_UID).create({
+        data: {
+          user: userId,
+          hours: Number((existingHours - 1).toFixed(2)),
+          source: existing.source,
+          sourceKey: `booking-release:${booking.id}:${Date.now()}`,
+          status: 'available',
+          grantedAt: existing.grantedAt ?? new Date(),
+          expiresAt: existing.expiresAt ?? null,
+          notes: appendNote(existing.notes, `Split excess hours from lesson booking ${booking.id}.`),
+        },
       });
+      return strapi.db.query(CREDIT_UID).findOne({ where: { id: existing.id } });
+    }
+    if (existing?.status === 'available') {
+      return reserveOneHour(strapi, existing, booking);
     }
   }
   const credit = await findAvailableCredit(strapi, userId);
   if (!credit) throw new Error('No available lesson credit remains for this booking.');
-  return strapi.db.query(CREDIT_UID).update({
-    where: { id: credit.id },
-    data: { status: 'reserved', notes: appendNote(credit.notes, `Reserved for lesson booking ${booking.id}.`) },
-  });
+  return reserveOneHour(strapi, credit, booking);
 }
 
 async function releaseCredit(strapi: any, booking: any) {

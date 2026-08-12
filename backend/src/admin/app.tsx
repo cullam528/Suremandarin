@@ -1921,6 +1921,7 @@ export default {
           id: '04',
           title: '04 会员与交易',
           items: [
+            ['会员管理', 'plugin::users-permissions.user'],
             ['会员方案', 'api::membership-plan.membership-plan'],
             ['会员订阅', 'api::membership-subscription.membership-subscription'],
             ['订单', 'api::order.order'],

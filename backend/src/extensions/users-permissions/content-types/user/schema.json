@@ -127,6 +127,11 @@
     "lastLoginAt": {
       "type": "datetime"
     },
+    "lessonHoursBalance": {
+      "type": "decimal",
+      "default": 0,
+      "min": 0
+    },
     "marketingConsent": {
       "type": "boolean",
       "default": false

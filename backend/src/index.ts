@@ -1,5 +1,11 @@
 import type { Core } from '@strapi/strapi';
 import { grantReferralTrialLesson, evaluateReferralRewards } from './api/referral/services/referral-rewards';
+import {
+  adjustLessonHoursBalance,
+  isSyncingLessonBalance,
+  syncAllLessonHoursBalances,
+  validateLessonHoursTarget,
+} from './api/lesson-credit/services/balance';
 
 const courses = [
   ['Private Course','private'], ['Group Course','group'], ['Learn & Travel Course','learn-travel'],
@@ -580,6 +586,7 @@ async function ensureEditorMarketingPermissions(strapi: Core.Strapi) {
   if (!editorRoles.length) return;
 
   const marketingSubjects = [
+    'plugin::users-permissions.user',
     'api::inquiry.inquiry',
     'api::newsletter-subscription.newsletter-subscription',
     'api::coupon.coupon',
@@ -831,6 +838,63 @@ async function ensureArticleContentManagerLayout(strapi: Core.Strapi) {
   configuration.layouts.edit = editLayout;
   configuration.layouts.list = listLayout;
   await store.set({ key, value: configuration });
+}
+
+async function ensureUserContentManagerLayout(strapi: Core.Strapi) {
+  const store = strapi.store({ type: 'plugin', name: 'content_manager' });
+  const key = 'configuration_content_types::plugin::users-permissions.user';
+  const configuration = await store.get({ key }) as {
+    metadatas?: Record<string, { edit?: Record<string, unknown>; list?: Record<string, unknown> }>;
+    layouts?: { edit?: Array<Array<{ name: string; size?: number }>>; list?: string[] };
+  } | undefined;
+  if (!configuration?.metadatas || !configuration.layouts) return;
+
+  const allFields = (configuration.layouts.edit ?? []).flat();
+  const byName = new Map(allFields.map((field) => [field.name, field]));
+  const field = (name: string, size = 6) => ({ ...(byName.get(name) ?? { name }), size });
+  const featured = [
+    ['fullName', 'username'],
+    ['email', 'phone'],
+    ['membershipLevel', 'membershipStatus'],
+    ['lessonHoursBalance', 'referralCount'],
+    ['membershipStartedAt', 'membershipExpiresAt'],
+    ['country', 'timezone'],
+  ].map((row) => row.filter((name) => configuration.metadatas?.[name]).map((name) => field(name)))
+    .filter((row) => row.length > 0);
+  const featuredNames = new Set(featured.flat().map((item) => item.name));
+  const remaining = (configuration.layouts.edit ?? [])
+    .map((row) => row.filter((item) => !featuredNames.has(item.name)))
+    .filter((row) => row.length > 0);
+  const editLayout = [...featured, ...remaining];
+  const listLayout = ['username', 'fullName', 'email', 'membershipLevel', 'lessonHoursBalance', 'confirmed', 'blocked']
+    .filter((name) => configuration.metadatas?.[name]);
+
+  const labels: Record<string, { label: string; description?: string }> = {
+    username: { label: '会员名' },
+    fullName: { label: '姓名' },
+    email: { label: '邮箱' },
+    phone: { label: '联系电话' },
+    membershipLevel: { label: '会员等级' },
+    membershipStatus: { label: '会员状态' },
+    lessonHoursBalance: {
+      label: '剩余课时（可人工修改）',
+      description: '直接填写会员应有的剩余课时，保存后系统会自动同步课时记录。已预约的课时不能直接扣减。',
+    },
+    referralCount: { label: '已推荐人数' },
+    membershipStartedAt: { label: '会员开始时间' },
+    membershipExpiresAt: { label: '会员到期时间' },
+  };
+  for (const [name, copy] of Object.entries(labels)) {
+    const metadata = configuration.metadatas[name];
+    if (!metadata) continue;
+    metadata.edit = { ...(metadata.edit ?? {}), ...copy };
+    metadata.list = { ...(metadata.list ?? {}), label: copy.label };
+  }
+  const changed = JSON.stringify(configuration.layouts.edit) !== JSON.stringify(editLayout)
+    || JSON.stringify(configuration.layouts.list) !== JSON.stringify(listLayout);
+  configuration.layouts.edit = editLayout;
+  configuration.layouts.list = listLayout;
+  if (changed || Object.keys(labels).length) await store.set({ key, value: configuration });
 }
 
 async function ensureArticleSeoPermissions(strapi: Core.Strapi) {
@@ -1177,12 +1241,25 @@ export default {
     });
     strapi.db.lifecycles.subscribe({
       models: ['plugin::users-permissions.user'],
+      beforeUpdate: async (event) => {
+        const data = event.params?.data as Record<string, unknown> | undefined;
+        if (!data || !Object.prototype.hasOwnProperty.call(data, 'lessonHoursBalance')) return;
+        const current = await strapi.db.query('plugin::users-permissions.user').findOne({ where: event.params?.where });
+        if (!current?.id || isSyncingLessonBalance(current.id)) return;
+        const target = await validateLessonHoursTarget(strapi, current.id, data.lessonHoursBalance);
+        event.state = { ...(event.state ?? {}), lessonHoursAdjustment: { userId: current.id, target } };
+      },
       afterCreate: async (event) => {
         try {
           await createReferralRecord(strapi, event.result, event.params?.data);
         } catch (error) {
           strapi.log.error(`Unable to create referral record: ${error instanceof Error ? error.message : String(error)}`);
         }
+      },
+      afterUpdate: async (event) => {
+        const adjustment = event.state?.lessonHoursAdjustment as { userId?: number; target?: number } | undefined;
+        if (!adjustment?.userId || adjustment.target === undefined) return;
+        await adjustLessonHoursBalance(strapi, adjustment.userId, adjustment.target);
       },
     });
     strapi.db.lifecycles.subscribe({
@@ -1204,9 +1281,12 @@ export default {
     await ensureDailyProgressPermission(strapi);
     await ensureLessonBookingPermission(strapi);
     await ensureArticleContentManagerLayout(strapi);
+    await ensureUserContentManagerLayout(strapi);
     await ensureArticleSeoPermissions(strapi);
+    await syncAllLessonHoursBalances(strapi);
     setTimeout(() => {
       ensureArticleContentManagerLayout(strapi).catch(() => undefined);
+      ensureUserContentManagerLayout(strapi).catch(() => undefined);
       ensureArticleSeoPermissions(strapi).catch(() => undefined);
     }, 2000);
     await ensureTestimonialSubmitPermission(strapi);
