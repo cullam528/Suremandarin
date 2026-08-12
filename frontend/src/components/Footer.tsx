@@ -100,7 +100,7 @@ export function Footer({
     <footer id="about" className="sm-site-footer bg-brand-navy text-white">
       <div className="sm-site-footer-grid page-shell grid gap-10 py-16 sm:grid-cols-2 lg:grid-cols-[1.5fr_repeat(3,1fr)_1fr]">
         <section className="sm-footer-brand">
-          <div className="flex items-center gap-3">
+          <div className="sm-footer-brand-row flex items-center gap-3">
             <Image
               src="/images/app.webp"
               alt="SureMandarin app icon"
@@ -111,28 +111,35 @@ export function Footer({
             <strong className="text-xl">
               {settings.siteName || "SureMandarin"}
             </strong>
+            <div className="sm-footer-socials ml-auto flex items-center gap-3 lg:hidden">
+              {socialLinks.map((social) => (
+                <a
+                  key={social.label}
+                  href={social.href}
+                  aria-label={social.label}
+                  title={social.label}
+                  className="transition-opacity hover:opacity-75"
+                >
+                  <Image
+                    src={`${social.image}?v=${socialAssetVersion}`}
+                    alt=""
+                    width={36}
+                    height={36}
+                    className="size-9 object-contain"
+                  />
+                </a>
+              ))}
+            </div>
           </div>
           <p className="mt-4 max-w-xs text-xs leading-6 text-slate-300">
             {locale === "zh"
               ? "帮助全球学习者自信说中文，深入理解中国文化。"
               : settings.footerDescription}
           </p>
-          <div className="mt-5 flex items-center gap-3">
+          <div className="mt-5 hidden items-center gap-3 lg:flex">
             {socialLinks.map((social) => (
-              <a
-                key={social.label}
-                href={social.href}
-                aria-label={social.label}
-                title={social.label}
-                className="transition-opacity hover:opacity-75"
-              >
-                <Image
-                  src={`${social.image}?v=${socialAssetVersion}`}
-                  alt=""
-                  width={36}
-                  height={36}
-                  className="size-9 object-contain"
-                />
+              <a key={social.label} href={social.href} aria-label={social.label} title={social.label} className="transition-opacity hover:opacity-75">
+                <Image src={`${social.image}?v=${socialAssetVersion}`} alt="" width={36} height={36} className="size-9 object-contain" />
               </a>
             ))}
           </div>
@@ -165,8 +172,8 @@ export function Footer({
           <h2 className="mb-4 text-sm font-bold">
             {locale === "zh" ? "联系我们" : "Connect With Us"}
           </h2>
-          <div className="grid grid-cols-2 gap-3">
-            <div className="text-center">
+          <div className="sm-footer-qr-grid grid grid-cols-2 gap-3">
+            <div className="sm-footer-qr-item text-center">
               {settings.whatsappQrCode ? (
                 <Image
                   src={settings.whatsappQrCode}
@@ -182,7 +189,7 @@ export function Footer({
               )}
               <p className="mt-2 text-xs font-bold lowercase text-slate-300">whatsapp</p>
             </div>
-            <div className="text-center">
+            <div className="sm-footer-qr-item text-center">
               {settings.wechatQrCode ? (
                 <Image
                   src={settings.wechatQrCode}

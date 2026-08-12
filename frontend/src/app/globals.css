@@ -209,12 +209,12 @@ button, a { -webkit-tap-highlight-color: transparent; }
 
   .sm-site-footer-grid { display: block; padding-block: 1.5rem .75rem; }
   .sm-footer-brand { padding-bottom: .5rem; }
-  .sm-footer-brand > div:first-child { gap: .55rem; }
-  .sm-footer-brand > div:first-child img { width: 2.5rem; height: 2.5rem; }
-  .sm-footer-brand > div:first-child strong { font-size: .95rem; }
+  .sm-footer-brand-row { gap: .55rem; }
+  .sm-footer-brand-row img { width: 2.5rem; height: 2.5rem; }
+  .sm-footer-brand-row strong { font-size: .95rem; }
   .sm-footer-brand > p { max-width: 19rem; margin-top: .35rem; font-size: .625rem; line-height: 1.3; }
-  .sm-footer-brand > div:last-child { margin-top: .45rem; gap: .4rem; }
-  .sm-footer-brand > div:last-child img { width: 1.5rem; height: 1.5rem; }
+  .sm-footer-socials { margin-top: 0; gap: .4rem; }
+  .sm-footer-socials img { width: 1.5rem; height: 1.5rem; }
   .sm-footer-column { display: none; }
   .sm-footer-accordion { border-top: 1px solid rgba(255,255,255,.14); }
   .sm-footer-accordion:last-of-type { border-bottom: 1px solid rgba(255,255,255,.14); }
@@ -224,9 +224,11 @@ button, a { -webkit-tap-highlight-color: transparent; }
   .sm-footer-accordion summary span { font-size: 1rem; font-weight: 400; transition: transform .2s ease; }
   .sm-footer-accordion-links { display: grid; gap: .3rem; padding: 0 0 .5rem; }
   .sm-footer-accordion-links a { color: #cbd5e1; font-size: .625rem; }
-  .sm-footer-contact { display: flex; align-items: center; gap: .6rem; padding-top: .65rem; }
+  .sm-footer-contact { display: block; padding-top: .65rem; }
   .sm-footer-contact h2 { margin: 0; font-size: .6875rem; white-space: nowrap; }
-  .sm-footer-contact img, .sm-footer-contact > div { width: 3.75rem; height: 3.75rem; border-radius: .45rem; }
+  .sm-footer-qr-grid { width: 100%; margin-top: .5rem; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .75rem; }
+  .sm-footer-qr-item { min-width: 0; }
+  .sm-footer-qr-item img, .sm-footer-qr-item > div { width: 100%; max-width: 7rem; height: auto; aspect-ratio: 1; border-radius: .45rem; }
   .sm-footer-contact p { margin: 0; font-size: .625rem; line-height: 1.35; }
   .sm-site-footer > div:last-child { gap: .3rem; padding-block: .55rem; align-items: flex-start; font-size: .5625rem; }
   .sm-site-footer > div:last-child > p { line-height: 1.4; }
