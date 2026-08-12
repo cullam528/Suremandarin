@@ -97,7 +97,7 @@ export function PuzzleCaptcha({
       </div>
       <div
         className="relative h-24 overflow-hidden rounded-xl bg-cover bg-center"
-        style={{ backgroundImage: `url(${challenge?.image ?? "/images/hero-panda.webp"})` }}
+        style={{ backgroundImage: `url(${challenge?.image ?? "/images/captcha/captcha-lantern.png"})` }}
       >
         <div className="absolute inset-0 bg-brand-navy/10" />
         {challenge && (
