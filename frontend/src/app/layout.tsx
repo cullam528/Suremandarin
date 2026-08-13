@@ -57,7 +57,6 @@ export const metadata: Metadata = {
     images: [absoluteUrl("/images/hero-global-learners.webp")],
   },
   robots: { index: true, follow: true, "max-image-preview": "large" },
-  icons: { icon: "/favicon.ico" },
 };
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
