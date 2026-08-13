@@ -23,6 +23,7 @@ export async function generateMetadata({
         description: d.course.summary,
         path: `/courses/${slug}`,
         image: d.course.image,
+        imageAlt: d.course.imageAlt,
       })
     : pageMetadata({
         locale: lang,
@@ -75,7 +76,6 @@ export default async function LocalizedCourse({
             hasCourseInstance: {
               "@type": "CourseInstance",
               courseMode: d.course.deliveryMode,
-              duration: d.course.duration,
             },
           },
           breadcrumbStructuredData([

@@ -26,6 +26,13 @@ export async function generateMetadata({
         description: article.excerpt,
         path: `/knowledge/${category}/${slug}`,
         image: article.image,
+        imageAlt: article.imageAlt,
+        article: {
+          publishedTime: article.publishDate || undefined,
+          modifiedTime: article.updatedAt || article.publishDate || undefined,
+          authors: [article.authorName],
+          section: article.categoryName,
+        },
       })
     : pageMetadata({
         locale: lang,
@@ -61,13 +68,18 @@ export default async function KnowledgeArticlePage({
             description: article.excerpt,
             image: articleImage,
             datePublished: article.publishDate || undefined,
-            dateModified: article.publishDate || undefined,
+            dateModified: article.updatedAt || article.publishDate || undefined,
             author: { "@type": "Person", name: article.authorName },
             publisher: {
               "@type": "EducationalOrganization",
               name: "SureMandarin",
               url: absoluteUrl("/"),
-              logo: { "@type": "ImageObject", url: absoluteUrl("/images/suremandarin-logo.webp") },
+              logo: {
+                "@type": "ImageObject",
+                url: absoluteUrl("/icon.png"),
+                width: 256,
+                height: 256,
+              },
             },
             mainEntityOfPage: articleUrl,
             inLanguage: lang === "zh" ? "zh-CN" : "en",

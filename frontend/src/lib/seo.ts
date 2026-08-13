@@ -12,6 +12,11 @@ export const siteUrl =
 
 export const siteName = "SureMandarin";
 
+export const googleSiteVerification =
+  process.env.GOOGLE_SITE_VERIFICATION?.trim() ||
+  process.env.NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION?.trim() ||
+  undefined;
+
 export const seoCopy = {
   en: {
     title: "SureMandarin | Chinese Courses for Confident Global Learners",
@@ -29,6 +34,7 @@ export const seoCopy = {
 } as const;
 
 export function absoluteUrl(path = "") {
+  if (/^https?:\/\//i.test(path)) return path;
   return `${siteUrl}${path.startsWith("/") || !path ? path : `/${path}`}`;
 }
 
@@ -45,17 +51,33 @@ export function pageMetadata({
   description,
   path,
   image = "/images/hero-global-learners.webp",
+  imageAlt,
   noIndex = false,
+  article,
 }: {
   locale: Locale;
   title: string;
   description: string;
   path: string;
   image?: string;
+  imageAlt?: string;
   noIndex?: boolean;
+  article?: {
+    publishedTime?: string;
+    modifiedTime?: string;
+    authors?: string[];
+    section?: string;
+  };
 }): Metadata {
   const languages = localizedUrls(path);
   const canonical = languages[locale];
+  const socialImage = absoluteUrl(image);
+  const openGraphImage = {
+    url: socialImage,
+    width: 1200,
+    height: 675,
+    alt: imageAlt || title,
+  };
   return {
     title,
     description,
@@ -64,28 +86,57 @@ export function pageMetadata({
       canonical,
       languages: {
         en: languages.en,
-        zh: languages.zh,
+        "zh-Hans": languages.zh,
         "x-default": languages.en,
       },
     },
-    openGraph: {
-      type: "website",
-      siteName,
-      locale: locale === "zh" ? "zh_CN" : "en_US",
-      url: canonical,
-      title,
-      description,
-      images: [{ url: absoluteUrl(image), width: 1200, height: 675, alt: title }],
-    },
+    openGraph: article
+      ? {
+          type: "article",
+          siteName,
+          locale: locale === "zh" ? "zh_CN" : "en_US",
+          alternateLocale: [locale === "zh" ? "en_US" : "zh_CN"],
+          url: canonical,
+          title,
+          description,
+          images: [openGraphImage],
+          publishedTime: article.publishedTime,
+          modifiedTime: article.modifiedTime,
+          authors: article.authors,
+          section: article.section,
+        }
+      : {
+          type: "website",
+          siteName,
+          locale: locale === "zh" ? "zh_CN" : "en_US",
+          alternateLocale: [locale === "zh" ? "en_US" : "zh_CN"],
+          url: canonical,
+          title,
+          description,
+          images: [openGraphImage],
+        },
     twitter: {
       card: "summary_large_image",
       title,
       description,
-      images: [absoluteUrl(image)],
+      images: [socialImage],
     },
     robots: noIndex
       ? { index: false, follow: false }
-      : { index: true, follow: true, "max-image-preview": "large" },
+      : {
+          index: true,
+          follow: true,
+          "max-image-preview": "large",
+          "max-snippet": -1,
+          "max-video-preview": -1,
+          googleBot: {
+            index: true,
+            follow: true,
+            "max-image-preview": "large",
+            "max-snippet": -1,
+            "max-video-preview": -1,
+          },
+        },
   };
 }
 
@@ -94,7 +145,6 @@ export function jsonLd(data: Record<string, unknown> | Record<string, unknown>[]
 }
 
 export function siteStructuredData({
-  locale,
   global,
 }: {
   locale: Locale;
@@ -102,19 +152,24 @@ export function siteStructuredData({
 }) {
   const socialLinks = (global?.socialLinks ?? [])
     .map((item) => item.url)
-    .filter(Boolean);
-  const localizedHome = absoluteUrl(`/${locale}`);
-  return [
-    {
-      "@context": "https://schema.org",
+    .filter((url) => /^https?:\/\//i.test(url));
+  return {
+    "@context": "https://schema.org",
+    "@graph": [{
       "@type": "EducationalOrganization",
       "@id": `${siteUrl}/#organization`,
       name: siteName,
       alternateName: "SureMandarin Chinese Training",
       url: siteUrl,
-      logo: absoluteUrl("/images/suremandarin-logo.webp"),
-      description: seoCopy[locale].description,
-      sameAs: socialLinks,
+      logo: {
+        "@type": "ImageObject",
+        url: absoluteUrl("/icon.png"),
+        width: 256,
+        height: 256,
+      },
+      image: absoluteUrl("/images/hero-global-learners.webp"),
+      description: seoCopy.en.description,
+      ...(socialLinks.length ? { sameAs: socialLinks } : {}),
       areaServed: "Worldwide",
       knowsAbout: [
         "Mandarin Chinese",
@@ -123,22 +178,15 @@ export function siteStructuredData({
         "Chinese culture",
         "IB Chinese tutoring",
       ],
-    },
-    {
-      "@context": "https://schema.org",
+    }, {
       "@type": "WebSite",
       "@id": `${siteUrl}/#website`,
       name: siteName,
       url: siteUrl,
-      inLanguage: locale === "zh" ? "zh-CN" : "en",
+      inLanguage: ["en", "zh-CN"],
       publisher: { "@id": `${siteUrl}/#organization` },
-      potentialAction: {
-        "@type": "SearchAction",
-        target: `${localizedHome}/knowledge?query={search_term_string}`,
-        "query-input": "required name=search_term_string",
-      },
-    },
-  ];
+    }],
+  };
 }
 
 export function breadcrumbStructuredData(

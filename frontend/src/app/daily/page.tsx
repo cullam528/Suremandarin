@@ -1,6 +1,5 @@
-import { redirect } from "next/navigation";
+import { permanentRedirect } from "next/navigation";
 
 export default function DailyAliasPage() {
-  redirect("/en/daily");
+  permanentRedirect("/en/daily");
 }
-

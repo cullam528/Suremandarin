@@ -4,13 +4,14 @@ import { KnowledgeOverview } from "@/components/knowledge/KnowledgeOverview";
 import { SiteShell } from "@/components/site/SiteShell";
 import { AppShowcase } from "@/components/site/AppShowcase";
 import { isLocale } from "@/lib/i18n";
+import { StructuredData } from "@/components/seo/StructuredData";
 import {
   getHomepageData,
   getKnowledgeArticles,
   knowledgeCategories,
   type KnowledgeCategorySlug,
 } from "@/lib/strapi";
-import { pageMetadata } from "@/lib/seo";
+import { absoluteUrl, breadcrumbStructuredData, pageMetadata } from "@/lib/seo";
 export async function generateMetadata({ params }: { params: Promise<{ lang: string }> }): Promise<Metadata> {
   const { lang } = await params;
   return isLocale(lang) ? pageMetadata({
@@ -35,6 +36,34 @@ export default async function KnowledgeIndex({
   ]);
   return (
     <SiteShell locale={lang}>
+      <StructuredData
+        data={[
+          {
+            "@context": "https://schema.org",
+            "@type": "CollectionPage",
+            "@id": `${absoluteUrl(`/${lang}/knowledge`)}#collection`,
+            name:
+              lang === "zh"
+                ? "SureMandarin 中文学习知识中心"
+                : "SureMandarin Chinese Learning Knowledge Center",
+            url: absoluteUrl(`/${lang}/knowledge`),
+            inLanguage: lang === "zh" ? "zh-CN" : "en",
+            hasPart: Object.keys(knowledgeCategories).map((category) => ({
+              "@type": "CollectionPage",
+              name: knowledgeCategories[category as KnowledgeCategorySlug][lang]
+                .title,
+              url: absoluteUrl(`/${lang}/knowledge/${category}`),
+            })),
+          },
+          breadcrumbStructuredData([
+            { name: lang === "zh" ? "首页" : "Home", path: `/${lang}` },
+            {
+              name: lang === "zh" ? "知识中心" : "Knowledge Center",
+              path: `/${lang}/knowledge`,
+            },
+          ]),
+        ]}
+      />
       <KnowledgeOverview
         sections={Object.keys(knowledgeCategories).map((category, index) => ({
           category: category as KnowledgeCategorySlug,

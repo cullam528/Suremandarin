@@ -1,35 +1,30 @@
 import type { Metadata } from "next";
 import { Plus_Jakarta_Sans } from "next/font/google";
-import { absoluteUrl, seoCopy, siteName, siteUrl } from "@/lib/seo";
+import {
+  absoluteUrl,
+  googleSiteVerification,
+  seoCopy,
+  siteName,
+  siteUrl,
+} from "@/lib/seo";
 import "./globals.css";
 
 const jakarta = Plus_Jakarta_Sans({ subsets: ["latin"], variable: "--font-jakarta" });
 
 export const metadata: Metadata = {
   metadataBase: new URL(siteUrl),
-  title: {
-    default: seoCopy.en.title,
-    template: `%s | ${siteName}`,
-  },
+  title: seoCopy.en.title,
   description: seoCopy.en.description,
   applicationName: siteName,
-  keywords: [
-    "learn Mandarin Chinese",
-    "Chinese courses online",
-    "Chinese tutor",
-    "HSK preparation",
-    "IB Chinese tutoring",
-    "中文培训",
-    "中文学习",
-  ],
   authors: [{ name: siteName, url: siteUrl }],
   creator: siteName,
   publisher: siteName,
+  category: "education",
   alternates: {
     canonical: absoluteUrl("/en"),
     languages: {
       en: absoluteUrl("/en"),
-      zh: absoluteUrl("/zh"),
+      "zh-Hans": absoluteUrl("/zh"),
       "x-default": absoluteUrl("/en"),
     },
   },
@@ -56,7 +51,23 @@ export const metadata: Metadata = {
     description: seoCopy.en.description,
     images: [absoluteUrl("/images/hero-global-learners.webp")],
   },
-  robots: { index: true, follow: true, "max-image-preview": "large" },
+  robots: {
+    index: true,
+    follow: true,
+    "max-image-preview": "large",
+    "max-snippet": -1,
+    "max-video-preview": -1,
+    googleBot: {
+      index: true,
+      follow: true,
+      "max-image-preview": "large",
+      "max-snippet": -1,
+      "max-video-preview": -1,
+    },
+  },
+  verification: googleSiteVerification
+    ? { google: googleSiteVerification }
+    : undefined,
 };
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {

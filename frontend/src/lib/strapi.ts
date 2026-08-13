@@ -42,6 +42,7 @@ export type ArticleDetailData = ArticleData & {
   body: string | unknown[];
   authorName: string;
   publishDate: string;
+  updatedAt?: string;
   readingMinutes: number;
   categoryName: string;
 };
@@ -780,6 +781,7 @@ function parseArticle(
     })(),
     authorName: String(raw.authorName ?? "SureMandarin Editorial Team"),
     publishDate: String(raw.publishDate ?? raw.publishedAt ?? ""),
+    updatedAt: String(raw.updatedAt ?? raw.publishDate ?? raw.publishedAt ?? ""),
     readingMinutes: Number(raw.readingMinutes ?? 5),
     categoryName: String(category?.name ?? "Knowledge Center"),
   };

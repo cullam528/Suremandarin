@@ -1,16 +1,5 @@
-import type { Metadata } from "next";
-import { ReferralPlan } from "@/components/site/ReferralPlan";
-import { SiteShell } from "@/components/site/SiteShell";
+import { permanentRedirect } from "next/navigation";
 
-export const metadata: Metadata = {
-  title: "Referral Plan | SureMandarin",
-  description: "Invite a friend to learn Chinese and unlock learning benefits for both of you.",
-};
-
-export default async function ReferralPage() {
-  return (
-    <SiteShell locale="en">
-      <ReferralPlan locale="en" />
-    </SiteShell>
-  );
+export default function ReferralAliasPage() {
+  permanentRedirect("/en/referral");
 }

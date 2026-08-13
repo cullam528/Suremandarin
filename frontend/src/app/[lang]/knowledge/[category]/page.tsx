@@ -3,7 +3,7 @@ import { notFound } from "next/navigation";
 import { KnowledgeListing } from "@/components/knowledge/KnowledgeListing";
 import { SiteShell } from "@/components/site/SiteShell";
 import { isLocale } from "@/lib/i18n";
-import { breadcrumbStructuredData, pageMetadata } from "@/lib/seo";
+import { absoluteUrl, breadcrumbStructuredData, pageMetadata } from "@/lib/seo";
 import { getKnowledgeArticles, knowledgeCategories, type KnowledgeCategorySlug } from "@/lib/strapi";
 import { StructuredData } from "@/components/seo/StructuredData";
 
@@ -42,11 +42,32 @@ export default async function KnowledgeCategoryPage({
   return (
     <SiteShell locale={lang}>
       <StructuredData
-        data={breadcrumbStructuredData([
-          { name: lang === "zh" ? "首页" : "Home", path: `/${lang}` },
-          { name: lang === "zh" ? "知识中心" : "Knowledge Center", path: `/${lang}/knowledge` },
-          { name: knowledgeCategories[categorySlug][lang].title, path: `/${lang}/knowledge/${category}` },
-        ])}
+        data={[
+          {
+            "@context": "https://schema.org",
+            "@type": "ItemList",
+            name: knowledgeCategories[categorySlug][lang].title,
+            itemListElement: articles.map((article, index) => ({
+              "@type": "ListItem",
+              position: index + 1,
+              name: article.title,
+              url: absoluteUrl(
+                `/${lang}/knowledge/${category}/${article.slug}`,
+              ),
+            })),
+          },
+          breadcrumbStructuredData([
+            { name: lang === "zh" ? "首页" : "Home", path: `/${lang}` },
+            {
+              name: lang === "zh" ? "知识中心" : "Knowledge Center",
+              path: `/${lang}/knowledge`,
+            },
+            {
+              name: knowledgeCategories[categorySlug][lang].title,
+              path: `/${lang}/knowledge/${category}`,
+            },
+          ]),
+        ]}
       />
       <KnowledgeListing
         articles={articles}
