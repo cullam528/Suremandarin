@@ -28,6 +28,55 @@ html { scroll-behavior: smooth; }
 body { margin: 0; background: white; color: var(--brand-text); }
 button, a { -webkit-tap-highlight-color: transparent; }
 
+/* IE11/IE mode only: replace the unsupported application with an upgrade notice. */
+#legacy-browser-warning { display: none; }
+.legacy-ie body > :not(#legacy-browser-warning) { display: none !important; }
+.legacy-ie #legacy-browser-warning {
+  position: fixed;
+  z-index: 2147483647;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  display: flex;
+  overflow: auto;
+  align-items: center;
+  justify-content: center;
+  padding: 32px 18px;
+  color: #333a4d;
+  background: #eef8ff;
+  font-family: Arial, "Microsoft YaHei", sans-serif;
+  text-align: center;
+}
+.legacy-browser-card {
+  width: 100%;
+  max-width: 620px;
+  border: 1px solid #dce9f5;
+  border-radius: 24px;
+  padding: 42px 38px;
+  background: #fff;
+  box-shadow: 0 20px 60px rgba(10, 29, 61, .12);
+}
+.legacy-browser-card img { display: block; margin: 0 auto; border-radius: 20px; }
+.legacy-browser-brand { margin: 12px 0 0; color: #1565ff; font-size: 18px; font-weight: bold; }
+.legacy-browser-card h1 { margin: 28px 0 12px; color: #0a1d3d; font-size: 30px; line-height: 1.3; }
+.legacy-browser-card h2 { margin: 22px 0 10px; color: #0a1d3d; font-size: 22px; line-height: 1.3; }
+.legacy-browser-card p { margin: 0; color: #5f6f85; font-size: 16px; line-height: 1.8; }
+.legacy-browser-card hr { height: 1px; margin: 24px 0 0; border: 0; background: #e6eaf0; }
+.legacy-browser-card nav { margin-top: 28px; }
+.legacy-browser-card a {
+  display: inline-block;
+  margin: 5px;
+  border-radius: 10px;
+  padding: 12px 18px;
+  color: #fff;
+  background: #1565ff;
+  font-size: 14px;
+  font-weight: bold;
+  text-decoration: none;
+}
+.legacy-browser-card a + a { background: #0a1d3d; }
+
 .page-shell { width: min(100% - 2rem, 1320px); margin-inline: auto; }
 .brand-gradient { background: linear-gradient(105deg, var(--brand-blue), var(--brand-cyan)); }
 .soft-gradient { background: linear-gradient(135deg, #f8fcff, #edf8ff 55%, #dff5fb); }
