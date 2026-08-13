@@ -1,6 +1,9 @@
 name: Keep Render awake
 
 on:
+  push:
+    branches: [main]
+    paths: [.github/workflows/keep-render-awake.yml]
   schedule:
     # Render Free sleeps after 15 minutes without inbound traffic.
     # GitHub schedules use UTC; every 10 minutes covers every timezone.
