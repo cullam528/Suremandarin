@@ -5,7 +5,6 @@ import { zh } from '@blocknote/core/locales';
 import { useCreateBlockNote } from '@blocknote/react';
 import { BlockNoteView } from '@blocknote/ariakit';
 
-import '@blocknote/core/fonts/inter.css';
 import '@blocknote/ariakit/style.css';
 
 type BlockNoteInputProps = {

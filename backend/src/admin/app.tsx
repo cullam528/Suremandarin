@@ -1303,6 +1303,11 @@ export default {
           line-height: 1.8;
         }
 
+        .sm-blocknote-shell,
+        .sm-blocknote-shell * {
+          font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Microsoft YaHei", "Noto Sans CJK SC", sans-serif !important;
+        }
+
         .sm-blocknote-error {
           margin: 7px 0 0;
           font-size: 12px;
