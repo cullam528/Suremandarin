@@ -284,7 +284,7 @@ export default {
         }
 
         body {
-          font-family: Inter, "Plus Jakarta Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif !important;
+          font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Microsoft YaHei", "Noto Sans CJK SC", sans-serif !important;
         }
 
         header {
@@ -1324,7 +1324,7 @@ export default {
           border-radius: 6px;
           background: #FFFFFF;
           color: #40536B;
-          font: 700 11px/1 Inter, sans-serif;
+          font: 700 11px/1 -apple-system, BlinkMacSystemFont, "Segoe UI", "Microsoft YaHei", sans-serif;
           box-shadow: 0 1px 2px rgba(38, 53, 78, .08);
         }
 
