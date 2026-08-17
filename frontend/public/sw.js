@@ -1,4 +1,4 @@
-const CACHE = "suremandarin-daily-v2";
+const CACHE = "suremandarin-daily-v3";
 const APP_SHELL = ["/images/suremandarin-icon.webp", "/images/suremandarin-logo.webp"];
 
 self.addEventListener("install", (event) => {

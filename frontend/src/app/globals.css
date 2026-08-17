@@ -149,8 +149,14 @@ button, a { -webkit-tap-highlight-color: transparent; }
 .daily-waveform { display: flex; width: 100%; align-items: center; justify-content: center; gap: .18rem; min-height: 2.8rem; margin-top: 1.1rem; opacity: .42; }
 .daily-waveform i { display: block; width: .18rem; border-radius: 999px; background: var(--brand-blue); }
 .daily-speech-error { width: 100%; margin: .75rem 0 0 !important; border-radius: .7rem; padding: .65rem .75rem; color: #b45309 !important; background: #fff7e6; font-size: .72rem !important; line-height: 1.45 !important; }
+.daily-recording-notice { width: 100%; margin: .75rem 0 0 !important; border-radius: .7rem; padding: .65rem .75rem; color: #087f6b !important; background: #eafbf6; font-size: .72rem !important; line-height: 1.45 !important; }
 .daily-transcript { width: 100%; margin: .6rem 0 0 !important; color: #55677d !important; font-size: .72rem !important; line-height: 1.45 !important; }
 .daily-transcript span { color: var(--brand-blue); font-weight: 800; }
+.daily-recording-review { display: grid; width: 100%; gap: .65rem; margin-top: .75rem; border: 1px solid #cbece5; border-radius: .9rem; padding: .75rem; background: #fff; }
+.daily-recording-review audio { display: block; width: 100%; height: 2.5rem; }
+.daily-recording-review > div { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, .65fr); gap: .5rem; }
+.daily-recording-review button { min-height: 2.5rem; border: 1px solid #bde7de; border-radius: .7rem; padding: .55rem .65rem; color: #087f6b; background: #eafbf6; font-size: .7rem; font-weight: 800; }
+.daily-recording-review button + button { border-color: #d7e4f2; color: #63758a; background: #f7fafe; }
 .daily-complete-mark { display: grid; width: 3.25rem; height: 3.25rem; place-items: center; margin-top: .8rem; border-radius: 1rem; color: #fff; background: linear-gradient(135deg, #1bbf9b, #48d8bf); box-shadow: 0 12px 24px rgba(51,214,181,.22); }
 .daily-complete-actions { display: grid; width: 100%; gap: .55rem; margin-top: 1.2rem; }
 .daily-secondary-button { display: inline-flex; align-items: center; justify-content: center; gap: .45rem; border: 1px solid #cfe1f2; border-radius: .75rem; padding: .7rem .8rem; color: var(--brand-blue); background: #fff; font-size: .75rem; font-weight: 800; }

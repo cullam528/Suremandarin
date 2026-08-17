@@ -21,6 +21,19 @@ const nextConfig: NextConfig = {
   async rewrites() {
     return [{ source: "/strapi-media/:path*", destination: `${strapiUrl}/uploads/:path*` }];
   },
+  async headers() {
+    return [
+      {
+        source: "/:path*",
+        headers: [
+          {
+            key: "Permissions-Policy",
+            value: "microphone=(self)",
+          },
+        ],
+      },
+    ];
+  },
 };
 
 export default nextConfig;

@@ -40,6 +40,11 @@ type SpeechRecognitionResultEventLike = Event & {
   results: ArrayLike<ArrayLike<{ transcript: string }>>;
 };
 
+type SpeechRecognitionErrorEventLike = Event & {
+  error?: string;
+  message?: string;
+};
+
 type SpeechRecognitionLike = {
   lang: string;
   continuous: boolean;
@@ -47,13 +52,47 @@ type SpeechRecognitionLike = {
   start: () => void;
   stop: () => void;
   onresult: ((event: SpeechRecognitionResultEventLike) => void) | null;
-  onerror: (() => void) | null;
+  onerror: ((event: SpeechRecognitionErrorEventLike) => void) | null;
   onend: (() => void) | null;
 };
 
 type SpeechRecognitionConstructorLike = new () => SpeechRecognitionLike;
 
 const emptyProgress: SavedProgress = { completed: [], streak: 0 };
+
+const systemRecorderMimeTypes = [
+  "audio/mp4",
+  "audio/webm;codecs=opus",
+  "audio/webm",
+  "audio/ogg;codecs=opus",
+];
+
+function supportsMicrophoneRecording() {
+  return Boolean(
+    typeof navigator !== "undefined" &&
+      typeof navigator.mediaDevices?.getUserMedia === "function" &&
+      typeof MediaRecorder !== "undefined",
+  );
+}
+
+function shouldPreferRecorderFallback() {
+  if (typeof window === "undefined") return false;
+  const userAgent = window.navigator.userAgent;
+  const navigatorWithStandalone = window.navigator as Navigator & {
+    standalone?: boolean;
+  };
+  const isIOS =
+    /iPad|iPhone|iPod/.test(userAgent) ||
+    (/Macintosh/.test(userAgent) && window.navigator.maxTouchPoints > 1);
+  const isStandalone =
+    navigatorWithStandalone.standalone === true ||
+    window.matchMedia?.("(display-mode: standalone)").matches;
+  const isEmbeddedBrowser =
+    /MicroMessenger|FBAN|FBAV|Instagram|Line\//i.test(userAgent) ||
+    (isIOS && !/Version\/\d+(?:\.\d+)*.*Safari\//i.test(userAgent));
+
+  return isStandalone || isEmbeddedBrowser;
+}
 
 function readLocalProgress(): SavedProgress {
   if (typeof window === "undefined") return emptyProgress;
@@ -70,25 +109,39 @@ export function DailyChallengeApp({ locale, days, isLoggedIn = false }: DailyCha
   const [progress, setProgress] = useState<SavedProgress>(() => readLocalProgress());
   const [selectedDay, setSelectedDay] = useState(1);
   const [recording, setRecording] = useState(false);
-  const [completed, setCompleted] = useState(false);
   const [speechSupported, setSpeechSupported] = useState<boolean | null>(() => {
     if (typeof window === "undefined") return null;
     const browserWindow = window as Window & { SpeechRecognition?: SpeechRecognitionConstructorLike; webkitSpeechRecognition?: SpeechRecognitionConstructorLike };
-    return Boolean(browserWindow.SpeechRecognition || browserWindow.webkitSpeechRecognition);
+    return Boolean(
+      browserWindow.SpeechRecognition ||
+        browserWindow.webkitSpeechRecognition ||
+        supportsMicrophoneRecording(),
+    );
   });
   const [speechError, setSpeechError] = useState("");
+  const [recordingNotice, setRecordingNotice] = useState("");
   const [transcript, setTranscript] = useState("");
+  const [recordedAudioUrl, setRecordedAudioUrl] = useState("");
+  const [usingRecorderFallback, setUsingRecorderFallback] = useState(false);
   const [notice, setNotice] = useState("");
   const [installPrompt, setInstallPrompt] = useState<BeforeInstallPromptEvent | null>(null);
   const [installVisible, setInstallVisible] = useState(false);
   const [shareMessage, setShareMessage] = useState("");
   const [reward, setReward] = useState<DailyReward | null>(null);
   const recognitionRef = useRef<SpeechRecognitionLike | null>(null);
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const mediaStreamRef = useRef<MediaStream | null>(null);
+  const recorderChunksRef = useRef<Blob[]>([]);
+  const recorderStartedAtRef = useRef(0);
+  const recorderFallbackRef = useRef(false);
+  const recorderTimeoutRef = useRef<number | null>(null);
+  const recordedAudioUrlRef = useRef("");
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const day = days[selectedDay - 1] ?? days[0];
   const nextDay = Math.min(selectedDay + 1, days.length);
   const completionCount = progress.completed.length;
   const progressPercent = Math.round((completionCount / days.length) * 100);
+  const completed = progress.completed.includes(selectedDay);
 
   useEffect(() => {
     if ("serviceWorker" in navigator) {
@@ -103,6 +156,21 @@ export function DailyChallengeApp({ locale, days, isLoggedIn = false }: DailyCha
     return () => {
       window.removeEventListener("beforeinstallprompt", handleInstall);
       recognitionRef.current?.stop();
+      if (recorderTimeoutRef.current) {
+        window.clearTimeout(recorderTimeoutRef.current);
+      }
+      const recorder = mediaRecorderRef.current;
+      if (recorder && recorder.state !== "inactive") {
+        recorder.onstart = null;
+        recorder.ondataavailable = null;
+        recorder.onstop = null;
+        recorder.onerror = null;
+        recorder.stop();
+      }
+      mediaStreamRef.current?.getTracks().forEach((track) => track.stop());
+      if (recordedAudioUrlRef.current) {
+        URL.revokeObjectURL(recordedAudioUrlRef.current);
+      }
     };
   }, []);
 
@@ -143,7 +211,6 @@ export function DailyChallengeApp({ locale, days, isLoggedIn = false }: DailyCha
         };
         if (cancelled) return;
         setProgress(next);
-        setCompleted(next.completed.includes(selectedDay));
         setReward(next.reward ?? null);
         window.localStorage.setItem(dailyProgressKey, JSON.stringify(next));
       } catch {
@@ -199,6 +266,12 @@ export function DailyChallengeApp({ locale, days, isLoggedIn = false }: DailyCha
   const completePractice = async () => {
     if (completed) return;
     setRecording(false);
+    if (recordedAudioUrlRef.current) {
+      URL.revokeObjectURL(recordedAudioUrlRef.current);
+      recordedAudioUrlRef.current = "";
+      setRecordedAudioUrl("");
+    }
+    setRecordingNotice("");
     const alreadyCompleted = progress.completed.includes(selectedDay);
     const next = alreadyCompleted
       ? progress
@@ -209,7 +282,6 @@ export function DailyChallengeApp({ locale, days, isLoggedIn = false }: DailyCha
         };
     const payload = await updateProgress(next);
     if (payload?.reward) setReward(payload.reward as DailyReward);
-    setCompleted(true);
     setInstallVisible(true);
   };
 
@@ -235,17 +307,166 @@ export function DailyChallengeApp({ locale, days, isLoggedIn = false }: DailyCha
     return Math.max(0, 1 - previous[expected.length] / Math.max(source.length, expected.length));
   };
 
-  const startPractice = () => {
-    if (completed) return;
-    const browserWindow = window as Window & { SpeechRecognition?: SpeechRecognitionConstructorLike; webkitSpeechRecognition?: SpeechRecognitionConstructorLike };
-    const Recognition = browserWindow.SpeechRecognition || browserWindow.webkitSpeechRecognition;
-    if (!Recognition) {
+  const clearRecorderTimeout = () => {
+    if (!recorderTimeoutRef.current) return;
+    window.clearTimeout(recorderTimeoutRef.current);
+    recorderTimeoutRef.current = null;
+  };
+
+  const stopMediaStream = () => {
+    mediaStreamRef.current?.getTracks().forEach((track) => track.stop());
+    mediaStreamRef.current = null;
+  };
+
+  const clearRecordedAudio = () => {
+    if (recordedAudioUrlRef.current) {
+      URL.revokeObjectURL(recordedAudioUrlRef.current);
+      recordedAudioUrlRef.current = "";
+    }
+    setRecordedAudioUrl("");
+    setRecordingNotice("");
+  };
+
+  const microphoneErrorMessage = (error: unknown) => {
+    const name = error instanceof DOMException ? error.name : "";
+    if (name === "NotAllowedError" || name === "SecurityError") {
+      return copy.microphoneDenied;
+    }
+    if (name === "NotFoundError" || name === "DevicesNotFoundError") {
+      return copy.microphoneMissing;
+    }
+    if (name === "NotReadableError" || name === "TrackStartError") {
+      return copy.microphoneBusy;
+    }
+    return copy.microphoneFailed;
+  };
+
+  const requestMicrophone = async () => {
+    if (!window.isSecureContext || !navigator.mediaDevices?.getUserMedia) {
+      throw new DOMException("Microphone requires HTTPS", "SecurityError");
+    }
+    return navigator.mediaDevices.getUserMedia({
+      audio: {
+        echoCancellation: true,
+        noiseSuppression: true,
+        autoGainControl: true,
+      },
+      video: false,
+    });
+  };
+
+  const startRecorderFallback = (stream: MediaStream) => {
+    if (typeof MediaRecorder === "undefined") {
+      stream.getTracks().forEach((track) => track.stop());
       setSpeechSupported(false);
       setSpeechError(copy.speechUnsupported);
       return;
     }
+
+    clearRecordedAudio();
     setSpeechError("");
     setTranscript("");
+    setRecordingNotice(copy.recorderMode);
+    setUsingRecorderFallback(true);
+    recorderChunksRef.current = [];
+    recorderStartedAtRef.current = 0;
+    mediaStreamRef.current = stream;
+
+    const preferredMimeType = systemRecorderMimeTypes.find((mimeType) => {
+      try {
+        return MediaRecorder.isTypeSupported(mimeType);
+      } catch {
+        return false;
+      }
+    });
+    const recorder = preferredMimeType
+      ? new MediaRecorder(stream, { mimeType: preferredMimeType })
+      : new MediaRecorder(stream);
+
+    recorder.onstart = () => {
+      recorderStartedAtRef.current = Date.now();
+    };
+    recorder.ondataavailable = (event) => {
+      if (event.data.size > 0) recorderChunksRef.current.push(event.data);
+    };
+    recorder.onerror = () => {
+      clearRecorderTimeout();
+      setRecording(false);
+      setRecordingNotice("");
+      setSpeechError(copy.microphoneFailed);
+      stopMediaStream();
+      mediaRecorderRef.current = null;
+    };
+    recorder.onstop = () => {
+      clearRecorderTimeout();
+      const duration = Date.now() - recorderStartedAtRef.current;
+      const mimeType = recorder.mimeType || preferredMimeType || "audio/mp4";
+      const recordingBlob = new Blob(recorderChunksRef.current, {
+        type: mimeType,
+      });
+      setRecording(false);
+      stopMediaStream();
+      mediaRecorderRef.current = null;
+
+      if (duration < 700 || recordingBlob.size < 600) {
+        setRecordingNotice("");
+        setSpeechError(copy.recordingTooShort);
+        return;
+      }
+
+      const nextAudioUrl = URL.createObjectURL(recordingBlob);
+      if (recordedAudioUrlRef.current) {
+        URL.revokeObjectURL(recordedAudioUrlRef.current);
+      }
+      recordedAudioUrlRef.current = nextAudioUrl;
+      setRecordedAudioUrl(nextAudioUrl);
+      setRecordingNotice(copy.recordingCaptured);
+    };
+
+    mediaRecorderRef.current = recorder;
+    recorder.start();
+    setRecording(true);
+    const maximumRecordingTime = day.dayNumber === days.length ? 65_000 : 20_000;
+    recorderTimeoutRef.current = window.setTimeout(() => {
+      if (mediaRecorderRef.current?.state === "recording") {
+        mediaRecorderRef.current.stop();
+      }
+    }, maximumRecordingTime);
+  };
+
+  const startPractice = async () => {
+    if (completed || recording) return;
+    setSpeechError("");
+    setRecordingNotice("");
+    setTranscript("");
+
+    let microphoneStream: MediaStream;
+    try {
+      microphoneStream = await requestMicrophone();
+      setSpeechSupported(true);
+    } catch (error) {
+      setRecording(false);
+      setSpeechError(microphoneErrorMessage(error));
+      return;
+    }
+
+    const browserWindow = window as Window & {
+      SpeechRecognition?: SpeechRecognitionConstructorLike;
+      webkitSpeechRecognition?: SpeechRecognitionConstructorLike;
+    };
+    const Recognition =
+      browserWindow.SpeechRecognition || browserWindow.webkitSpeechRecognition;
+    const useRecorder =
+      recorderFallbackRef.current ||
+      shouldPreferRecorderFallback() ||
+      !Recognition;
+
+    if (useRecorder) {
+      startRecorderFallback(microphoneStream);
+      return;
+    }
+
+    microphoneStream.getTracks().forEach((track) => track.stop());
     const recognition = new Recognition();
     recognition.lang = "zh-CN";
     recognition.continuous = false;
@@ -257,27 +478,50 @@ export function DailyChallengeApp({ locale, days, isLoggedIn = false }: DailyCha
       setRecording(false);
       recognitionRef.current = null;
       if (score >= 0.62) {
-        completePractice();
+        void completePractice();
       } else {
         setSpeechError(copy.speechRetry);
       }
     };
-    recognition.onerror = () => {
+    recognition.onerror = (event) => {
       setRecording(false);
       recognitionRef.current = null;
-      setSpeechError(copy.speechRetry);
+      if (event.error === "not-allowed" || event.error === "service-not-allowed") {
+        setSpeechError(copy.microphoneDenied);
+        return;
+      }
+      if (event.error === "no-speech") {
+        setSpeechError(copy.noSpeechDetected);
+        return;
+      }
+      recorderFallbackRef.current = true;
+      setUsingRecorderFallback(true);
+      setSpeechError(copy.switchToRecorder);
     };
     recognition.onend = () => {
       setRecording(false);
       recognitionRef.current = null;
     };
     recognitionRef.current = recognition;
+    setUsingRecorderFallback(false);
     setRecording(true);
-    recognition.start();
+    try {
+      recognition.start();
+    } catch {
+      setRecording(false);
+      recognitionRef.current = null;
+      recorderFallbackRef.current = true;
+      setUsingRecorderFallback(true);
+      setSpeechError(copy.switchToRecorder);
+    }
   };
 
   const stopPractice = () => {
-    recognitionRef.current?.stop();
+    if (recognitionRef.current) recognitionRef.current.stop();
+    if (mediaRecorderRef.current?.state === "recording") {
+      mediaRecorderRef.current.stop();
+      return;
+    }
     setRecording(false);
   };
 
@@ -301,9 +545,9 @@ export function DailyChallengeApp({ locale, days, isLoggedIn = false }: DailyCha
     }
     setNotice("");
     setSelectedDay(dayNumber);
-    setCompleted(progress.completed.includes(dayNumber));
     setSpeechError("");
     setTranscript("");
+    clearRecordedAudio();
   };
 
   const share = async () => {
@@ -434,7 +678,17 @@ export function DailyChallengeApp({ locale, days, isLoggedIn = false }: DailyCha
                   {!recording && <ArrowRight size={19} />}
                 </button>
                 {speechError && <p className="daily-speech-error" role="alert">{speechError}</p>}
+                {recordingNotice && <p className="daily-recording-notice" role="status">{recordingNotice}</p>}
                 {transcript && <p className="daily-transcript"><span>{copy.recognized}</span> {transcript}</p>}
+                {recordedAudioUrl && usingRecorderFallback ? (
+                  <div className="daily-recording-review">
+                    <audio controls preload="metadata" src={recordedAudioUrl} aria-label={copy.recordingCaptured} />
+                    <div>
+                      <button type="button" onClick={() => void completePractice()}>{copy.confirmRecording}</button>
+                      <button type="button" onClick={clearRecordedAudio}>{copy.recordAgain}</button>
+                    </div>
+                  </div>
+                ) : null}
                 <div className="daily-waveform" aria-hidden="true">{Array.from({ length: 26 }, (_, index) => <i key={index} style={{ height: `${12 + ((index * 17) % 21)}px` }} />)}</div>
               </>
             ) : (
