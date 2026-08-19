@@ -193,7 +193,7 @@ button, a { -webkit-tap-highlight-color: transparent; }
   .daily-listen { width: 100%; justify-content: center; }
   .daily-speaking-card { min-height: 19rem; }
   .daily-bottom-cta { align-items: flex-start; flex-wrap: wrap; }
-  .daily-bottom-actions { width: 100%; align-items: stretch; margin-left: 4rem; }
+  .daily-bottom-actions { width: 100%; align-items: stretch; margin: .25rem 0 0; }
   .daily-primary-link { justify-content: center; }
 }
 
