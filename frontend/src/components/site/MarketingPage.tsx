@@ -553,10 +553,12 @@ function AboutPageContent({ locale }: { locale: Locale }) {
             </div>
             <div className="absolute -bottom-6 -right-4 rounded-2xl border border-brand-line bg-white p-4 shadow-xl sm:-right-8">
               <p className="text-xs font-extrabold uppercase tracking-[.15em] text-brand-blue">
-                {zh ? "创始人 / 学术负责人" : "Founder / Academic Director"}
+                {zh ? "创始人：Jessica" : "Founder: Jessica"}
               </p>
               <p className="mt-1 text-sm font-bold text-brand-navy">
-                {zh ? "把每一节课做好" : "Making every lesson count"}
+                {zh
+                  ? "2007 年起教授中文 / 学员来自 25+ 个国家"
+                  : "Mandarin teacher since 2007 / over 25 country students"}
               </p>
             </div>
           </div>
