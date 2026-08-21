@@ -2500,7 +2500,7 @@ export default {
         try {
           const { data: payload } = await getFetchClient().post<{
             data?: { message?: string };
-          }>('/suremandarin/contact-user', {
+          }>('/admin/suremandarin/contact-user', {
             userId: details.userId,
             subject: subjectValue,
             message: messageValue,
