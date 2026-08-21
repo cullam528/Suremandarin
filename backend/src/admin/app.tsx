@@ -1,5 +1,5 @@
 import { createElement, type ReactNode } from 'react';
-import type { StrapiApp } from '@strapi/strapi/admin';
+import { getFetchClient, type StrapiApp } from '@strapi/strapi/admin';
 import { Editor as SlateEditor, Transforms, type Editor } from 'slate';
 
 import AuthLogo from './assets/suremandarin-logo.png';
@@ -2498,14 +2498,13 @@ export default {
         status.dataset.error = 'false';
         status.textContent = '正在发送…';
         try {
-          const response = await fetch('/admin/suremandarin/contact-user', {
-            method: 'POST',
-            headers: adminRequestHeaders(),
-            credentials: 'include',
-            body: JSON.stringify({ userId: details.userId, subject: subjectValue, message: messageValue }),
+          const { data: payload } = await getFetchClient().post<{
+            data?: { message?: string };
+          }>('/suremandarin/contact-user', {
+            userId: details.userId,
+            subject: subjectValue,
+            message: messageValue,
           });
-          const payload = await response.json().catch(() => ({})) as { data?: { message?: string }; error?: { message?: string } };
-          if (!response.ok) throw new Error(payload.error?.message || '邮件发送失败，请检查邮件配置。');
           status.dataset.error = 'false';
           status.textContent = payload.data?.message || '邮件已发送。';
           window.setTimeout(close, 900);
