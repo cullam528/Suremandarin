@@ -7,6 +7,11 @@ const STRAPI_URL = (
     ? configuredStrapiUrl
     : "https://api.suremandarin.com"
 ).replace(/\/$/, "");
+const configuredTimeout = Number(process.env.STRAPI_REQUEST_TIMEOUT_MS);
+const STRAPI_REQUEST_TIMEOUT_MS =
+  Number.isFinite(configuredTimeout) && configuredTimeout >= 1000
+    ? configuredTimeout
+    : 30_000;
 
 type StrapiMedia = { url?: string; alternativeText?: string | null } | null;
 
@@ -311,7 +316,7 @@ async function request<T>(path: string): Promise<T> {
   const response = await fetch(`${STRAPI_URL}${path}`, {
     next: { revalidate: 60, tags: ["strapi-homepage"] },
     headers: { Accept: "application/json" },
-    signal: AbortSignal.timeout(3000),
+    signal: AbortSignal.timeout(STRAPI_REQUEST_TIMEOUT_MS),
   });
   if (!response.ok)
     throw new Error(`Strapi request failed: ${response.status} ${path}`);
@@ -322,7 +327,7 @@ async function optionalRequest<T>(path: string, empty: T): Promise<T> {
   const response = await fetch(`${STRAPI_URL}${path}`, {
     next: { revalidate: 60, tags: ["strapi-homepage"] },
     headers: { Accept: "application/json" },
-    signal: AbortSignal.timeout(3000),
+    signal: AbortSignal.timeout(STRAPI_REQUEST_TIMEOUT_MS),
   });
   if (response.status === 404) return empty;
   if (!response.ok)
@@ -522,6 +527,9 @@ function parseGlobalData(
   };
 }
 
+// Transport failures must escape these loaders. Next.js keeps the last
+// successful cached response when revalidation fails; returning static data
+// here would turn an outage into a successful fallback cache update.
 export const getGlobalData = cache(async (locale: Locale = "en") => {
   const localeFallback = localizeHomepage(fallback, locale).global;
   try {
@@ -534,14 +542,14 @@ export const getGlobalData = cache(async (locale: Locale = "en") => {
     );
     return parseGlobalData(response.data ?? {}, localeFallback);
   } catch (error) {
-    console.error("Using fallback global settings because Strapi is unavailable.", error);
-    return localeFallback;
+    console.error("Strapi global settings revalidation failed; preserving CMS content.", error);
+    throw error;
   }
 });
 
-export async function getHomepageData(
+export const getHomepageData = cache(async (
   locale: Locale = "en",
-): Promise<HomepageData> {
+): Promise<HomepageData> => {
   const localeFallback = localizeHomepage(fallback, locale);
   try {
     const [
@@ -684,12 +692,12 @@ export async function getHomepageData(
     };
   } catch (error) {
     console.error(
-      "Using homepage fallback data because Strapi is unavailable.",
+      "Strapi homepage revalidation failed; preserving CMS content.",
       error,
     );
-    return localeFallback;
+    throw error;
   }
-}
+});
 
 export async function getCourseDetailData(
   slug: string,
@@ -729,19 +737,8 @@ export async function getCourseDetailData(
       global: home.global,
       testimonials: home.testimonials,
     };
-  } catch {
-    if (!fallbackCourse) return null;
-    return {
-      course: {
-        ...fallbackCourse,
-        audience: "Adults and young learners",
-        level: "All levels",
-        deliveryMode: "Online or in person",
-        duration: "Flexible schedule",
-      },
-      global: home.global,
-      testimonials: home.testimonials,
-    };
+  } catch (error) {
+    throw error;
   }
 }
 
@@ -808,8 +805,8 @@ export async function getKnowledgeArticles(
       const remoteSlugs = new Set(remoteArticles.map((article) => article.slug));
       return [...remoteArticles, ...fallbackArticles.filter((article) => !remoteSlugs.has(article.slug))].slice(0, 12);
     }
-  } catch {
-    // Use the curated fallback below when the CMS is unavailable.
+  } catch (error) {
+    throw error;
   }
   return getFallbackKnowledgeArticles(category, locale);
 }
@@ -827,8 +824,8 @@ export async function getKnowledgeArticle(
       ),
     );
     if (response.data[0]) return parseArticle(response.data[0], 0, category);
-  } catch {
-    // Use the curated fallback below when the CMS is unavailable.
+  } catch (error) {
+    throw error;
   }
   return getFallbackKnowledgeArticles(category, locale).find((article) => article.slug === slug) ?? null;
 }

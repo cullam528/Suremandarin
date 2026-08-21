@@ -6,8 +6,9 @@ on:
     paths: [.github/workflows/keep-render-awake.yml]
   schedule:
     # Render Free sleeps after 15 minutes without inbound traffic.
-    # GitHub schedules use UTC; every 10 minutes covers every timezone.
-    - cron: "*/10 * * * *"
+    # Use the shortest supported interval and avoid minute zero, when GitHub
+    # documents the highest risk of delayed or dropped scheduled jobs.
+    - cron: "3,8,13,18,23,28,33,38,43,48,53,58 * * * *"
   workflow_dispatch:
 
 permissions:
