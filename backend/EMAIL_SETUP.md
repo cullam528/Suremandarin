@@ -17,11 +17,17 @@ SMTP_USERNAME=resend
 SMTP_PASSWORD=
 SMTP_REQUIRE_TLS=false
 EMAIL_FROM=SureMandarin <hello@suremandarin.com>
+EMAIL_FROM_ADDRESS=hello@suremandarin.com
 EMAIL_REPLY_TO=support@suremandarin.com
+ADMIN_NOTIFICATION_EMAIL=qingniaobird@163.com
 ```
 
 `SMTP_PASSWORD` 填 Resend API Key。不要把密钥提交到 GitHub，也不要写进
 `.env.example`；请只在 Strapi Cloud、Railway 或其他线上主机的环境变量页面填写。
+
+用户注册后，系统会将姓名、邮箱、注册渠道、平台、时区、电话和推荐人信息发送到
+`ADMIN_NOTIFICATION_EMAIL`。邮件使用 `EMAIL_FROM` 作为发件人，并将新用户邮箱设置为
+`Reply-To`，因此在 163 邮箱中直接点击“回复”即可联系该用户。
 
 ## Resend 域名设置
 

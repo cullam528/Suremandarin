@@ -664,6 +664,91 @@ async function ensureLessonBookingPermission(strapi: Core.Strapi) {
   }
 }
 
+function escapeEmailHtml(value: unknown) {
+  return String(value ?? '—').replace(/[&<>"']/g, (character) => ({
+    '&': '&amp;',
+    '<': '&lt;',
+    '>': '&gt;',
+    '"': '&quot;',
+    "'": '&#39;',
+  }[character] ?? character));
+}
+
+async function notifyNewUserRegistration(strapi: Core.Strapi, user: any, registrationData: any) {
+  const recipient = String(process.env.ADMIN_NOTIFICATION_EMAIL ?? 'qingniaobird@163.com').trim();
+  const userEmail = String(user?.email ?? '').trim();
+  if (!recipient || !userEmail) return;
+
+  const fullName = String(user?.fullName ?? user?.displayName ?? user?.username ?? '—').trim();
+  const registrationSource = String(user?.registrationSource ?? registrationData?.registrationSource ?? 'website').trim();
+  const registrationPlatform = String(user?.registrationPlatform ?? registrationData?.registrationPlatform ?? 'web').trim();
+  const referredByCode = String(user?.referredByCode ?? registrationData?.referredByCode ?? '').trim();
+  let referrer = '—';
+  if (referredByCode) {
+    const referrers = await strapi.db.query('plugin::users-permissions.user').findMany({
+      where: { referralCode: referredByCode },
+      limit: 1,
+    });
+    const referrerUser = referrers[0];
+    if (referrerUser) {
+      referrer = `${referrerUser.fullName ?? referrerUser.displayName ?? referrerUser.username ?? '—'} (${referrerUser.email ?? '—'})`;
+    } else {
+      referrer = referredByCode;
+    }
+  }
+
+  const createdAt = new Date(user?.createdAt ?? Date.now()).toLocaleString('en-US', {
+    timeZone: 'Asia/Shanghai',
+    dateStyle: 'medium',
+    timeStyle: 'short',
+  });
+  const from = process.env.EMAIL_FROM ?? 'SureMandarin <hello@suremandarin.com>';
+  const subject = `New SureMandarin registration: ${fullName}`;
+  const text = [
+    'A new learner has registered on SureMandarin.',
+    '',
+    `Name: ${fullName}`,
+    `Email: ${userEmail}`,
+    `Registration source: ${registrationSource}`,
+    `Platform: ${registrationPlatform}`,
+    `Preferred language: ${user?.preferredLanguage ?? '—'}`,
+    `Timezone: ${user?.timezone ?? '—'}`,
+    `Phone: ${user?.phone ?? '—'}`,
+    `Referrer: ${referrer}`,
+    `Registered at: ${createdAt} (China Standard Time)`,
+    '',
+    'Reply to this email to contact the learner directly.',
+  ].join('\n');
+  const row = (label: string, value: unknown) => `<tr><td style="padding:8px 12px;color:#64748b;font-weight:700">${escapeEmailHtml(label)}</td><td style="padding:8px 12px;color:#0a1d3d">${escapeEmailHtml(value)}</td></tr>`;
+  const html = `
+    <div style="font-family:Arial,sans-serif;line-height:1.6;color:#0a1d3d;max-width:620px;margin:auto">
+      <h2 style="color:#1565ff;margin-bottom:8px">New SureMandarin registration</h2>
+      <p>A new learner has registered on the website.</p>
+      <table style="width:100%;border-collapse:collapse;border:1px solid #e6eaf0;border-radius:12px;overflow:hidden">
+        ${row('Name', fullName)}
+        ${row('Email', userEmail)}
+        ${row('Registration source', registrationSource)}
+        ${row('Platform', registrationPlatform)}
+        ${row('Preferred language', user?.preferredLanguage)}
+        ${row('Timezone', user?.timezone)}
+        ${row('Phone', user?.phone)}
+        ${row('Referrer', referrer)}
+        ${row('Registered at', `${createdAt} (China Standard Time)`)}
+      </table>
+      <p style="margin-top:20px;color:#64748b">Reply to this email to contact the learner directly.</p>
+    </div>
+  `;
+
+  await strapi.plugin('email').service('email').send({
+    to: recipient,
+    from,
+    replyTo: userEmail,
+    subject,
+    text,
+    html,
+  });
+}
+
 async function createReferralRecord(strapi: Core.Strapi, user: any, registrationData: any) {
   const referredByCode = String(user?.referredByCode ?? registrationData?.referredByCode ?? '').trim();
   if (!referredByCode || !user?.id) return;
@@ -1250,6 +1335,9 @@ export default {
         event.state = { ...(event.state ?? {}), lessonHoursAdjustment: { userId: current.id, target } };
       },
       afterCreate: async (event) => {
+        void notifyNewUserRegistration(strapi, event.result, event.params?.data).catch((error) => {
+          strapi.log.error(`Unable to send new registration notification: ${error instanceof Error ? error.message : String(error)}`);
+        });
         try {
           await createReferralRecord(strapi, event.result, event.params?.data);
         } catch (error) {
