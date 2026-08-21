@@ -1330,9 +1330,11 @@ export default {
             }
 
             const userQuery = strapi.db.query('plugin::users-permissions.user');
-            let user = await userQuery.findOne({ where: { documentId: requestedId } });
-            if (!user && /^\d+$/.test(requestedId)) {
-              user = await userQuery.findOne({ where: { id: Number(requestedId) } });
+            let user = /^\d+$/.test(requestedId)
+              ? await userQuery.findOne({ where: { id: Number(requestedId) } })
+              : await userQuery.findOne({ where: { documentId: requestedId } });
+            if (!user && !/^\d+$/.test(requestedId)) {
+              user = await userQuery.findOne({ where: { id: requestedId } });
             }
             if (!user?.email) {
               ctx.throw(404, '没有找到该用户或用户没有邮箱地址。');
