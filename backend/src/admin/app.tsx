@@ -1527,6 +1527,77 @@ export default {
           box-shadow: none !important;
           object-fit: contain;
         }
+
+        .sm-contact-user-card {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 18px;
+          margin: 0 0 18px;
+          padding: 16px 18px;
+          border: 1px solid #DCE7F5;
+          border-radius: 18px;
+          background: linear-gradient(135deg, rgba(255,255,255,.94), rgba(239,248,255,.82));
+          box-shadow: 0 10px 25px rgba(82, 105, 146, .07);
+        }
+
+        .sm-contact-user-copy { min-width: 0; }
+        .sm-contact-user-copy strong { display: block; color: #182337; font-size: 14px; font-weight: 780; }
+        .sm-contact-user-copy span { display: block; margin-top: 3px; overflow: hidden; color: #718198; font-size: 12px; text-overflow: ellipsis; white-space: nowrap; }
+        .sm-contact-user-button {
+          flex: 0 0 auto;
+          min-height: 42px;
+          padding: 0 16px;
+          border: 0;
+          border-radius: 12px;
+          color: #fff;
+          background: linear-gradient(135deg, #246BFE, #18B9D4);
+          box-shadow: 0 8px 18px rgba(36, 107, 254, .18);
+          cursor: pointer;
+          font-size: 13px;
+          font-weight: 780;
+        }
+        .sm-contact-user-button:hover { transform: translateY(-1px); box-shadow: 0 11px 24px rgba(36, 107, 254, .24); }
+
+        .sm-contact-user-overlay {
+          position: fixed;
+          z-index: 2147483000;
+          inset: 0;
+          display: grid;
+          place-items: center;
+          padding: 20px;
+          background: rgba(22, 32, 51, .28);
+          backdrop-filter: blur(8px);
+        }
+        .sm-contact-user-dialog {
+          width: min(100%, 620px);
+          border: 1px solid #E0E9F3;
+          border-radius: 22px;
+          padding: 24px;
+          background: #fff;
+          box-shadow: 0 24px 80px rgba(22, 32, 51, .2);
+        }
+        .sm-contact-user-dialog h2 { margin: 0; color: #182337; font-size: 20px; font-weight: 800; }
+        .sm-contact-user-dialog > p { margin: 6px 0 18px; color: #718198; font-size: 12px; line-height: 1.5; }
+        .sm-contact-user-dialog label { display: grid; gap: 7px; margin-top: 13px; color: #34445B; font-size: 12px; font-weight: 750; }
+        .sm-contact-user-dialog input,
+        .sm-contact-user-dialog textarea { width: 100%; box-sizing: border-box; border: 1px solid #DCE7F5; border-radius: 12px; padding: 11px 12px; color: #182337; background: #FBFDFF; font: inherit; outline: none; }
+        .sm-contact-user-dialog input:focus,
+        .sm-contact-user-dialog textarea:focus { border-color: #8BB5FF; box-shadow: 0 0 0 3px rgba(36,107,254,.1); }
+        .sm-contact-user-dialog textarea { min-height: 170px; resize: vertical; line-height: 1.6; }
+        .sm-contact-user-dialog-actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 20px; }
+        .sm-contact-user-dialog-actions button { min-height: 40px; border-radius: 11px; padding: 0 15px; font-size: 12px; font-weight: 780; cursor: pointer; }
+        .sm-contact-user-cancel { border: 1px solid #DCE7F5; color: #617087; background: #fff; }
+        .sm-contact-user-send { border: 0; color: #fff; background: linear-gradient(135deg, #246BFE, #18B9D4); }
+        .sm-contact-user-dialog-actions button:disabled { cursor: not-allowed; opacity: .55; }
+        .sm-contact-user-status { min-height: 18px; margin: 12px 0 0; color: #16856F; font-size: 12px; line-height: 1.5; }
+        .sm-contact-user-status[data-error="true"] { color: #C2410C; }
+
+        @media (max-width: 700px) {
+          .sm-contact-user-card { align-items: stretch; flex-direction: column; gap: 12px; }
+          .sm-contact-user-button { width: 100%; }
+          .sm-contact-user-dialog { padding: 18px; border-radius: 18px; }
+        }
       `;
       document.head.appendChild(style);
     }
@@ -2337,6 +2408,149 @@ export default {
       return headers;
     };
 
+    const userEntryDetails = () => {
+      const match = window.location.pathname.match(
+        /\/admin\/content-manager\/collection-types\/plugin::users-permissions\.user\/([^/]+)/,
+      );
+      if (!match || match[1] === 'create') return null;
+      const main = document.querySelector<HTMLElement>('main');
+      const emailInput = main?.querySelector<HTMLInputElement>('input[name="email"]');
+      if (!main || !emailInput?.value.trim()) return null;
+      return {
+        main,
+        userId: decodeURIComponent(match[1]),
+        email: emailInput.value.trim(),
+        name: main.querySelector<HTMLInputElement>('input[name="fullName"]')?.value.trim()
+          || main.querySelector<HTMLInputElement>('input[name="displayName"]')?.value.trim()
+          || emailInput.value.trim(),
+      };
+    };
+
+    const removeContactUserDialog = () => {
+      document.querySelectorAll('.sm-contact-user-overlay').forEach((overlay) => overlay.remove());
+    };
+
+    const openContactUserDialog = (details: { userId: string; email: string; name: string }) => {
+      removeContactUserDialog();
+      const overlay = document.createElement('div');
+      overlay.className = 'sm-contact-user-overlay';
+      const dialog = document.createElement('div');
+      dialog.className = 'sm-contact-user-dialog';
+      dialog.setAttribute('role', 'dialog');
+      dialog.setAttribute('aria-modal', 'true');
+
+      const heading = document.createElement('h2');
+      heading.textContent = '联系用户 / Contact user';
+      const description = document.createElement('p');
+      description.textContent = `收件人：${details.name} · ${details.email}。邮件将使用 SureMandarin 官方邮箱发送。`;
+      const subjectLabel = document.createElement('label');
+      subjectLabel.textContent = '邮件主题 / Subject';
+      const subject = document.createElement('input');
+      subject.type = 'text';
+      subject.maxLength = 160;
+      subject.value = '关于你的中文学习计划 / Your Chinese learning plan';
+      subjectLabel.appendChild(subject);
+      const messageLabel = document.createElement('label');
+      messageLabel.textContent = '邮件内容 / Message';
+      const message = document.createElement('textarea');
+      message.maxLength = 12000;
+      message.placeholder = '请输入要发送给用户的内容…';
+      message.value = `Hi ${details.name},\n\nThank you for joining SureMandarin. I would love to learn more about your Chinese learning goals and help you choose the right plan.\n\nBest regards,\nSureMandarin`;
+      messageLabel.appendChild(message);
+
+      const status = document.createElement('p');
+      status.className = 'sm-contact-user-status';
+      status.setAttribute('role', 'status');
+      const actions = document.createElement('div');
+      actions.className = 'sm-contact-user-dialog-actions';
+      const cancel = document.createElement('button');
+      cancel.type = 'button';
+      cancel.className = 'sm-contact-user-cancel';
+      cancel.textContent = '取消 / Cancel';
+      const send = document.createElement('button');
+      send.type = 'button';
+      send.className = 'sm-contact-user-send';
+      send.textContent = '发送邮件 / Send email';
+      actions.append(cancel, send);
+      dialog.append(heading, description, subjectLabel, messageLabel, status, actions);
+      overlay.appendChild(dialog);
+      document.body.appendChild(overlay);
+      subject.focus();
+
+      const close = () => overlay.remove();
+      cancel.addEventListener('click', close);
+      overlay.addEventListener('click', (event) => {
+        if (event.target === overlay) close();
+      });
+      dialog.addEventListener('keydown', (event) => {
+        if (event.key === 'Escape') close();
+      });
+      send.addEventListener('click', async () => {
+        const subjectValue = subject.value.trim();
+        const messageValue = message.value.trim();
+        if (!subjectValue || !messageValue) {
+          status.dataset.error = 'true';
+          status.textContent = '请填写邮件主题和内容。';
+          return;
+        }
+        send.disabled = true;
+        cancel.disabled = true;
+        status.dataset.error = 'false';
+        status.textContent = '正在发送…';
+        try {
+          const response = await fetch('/admin/suremandarin/contact-user', {
+            method: 'POST',
+            headers: adminRequestHeaders(),
+            credentials: 'include',
+            body: JSON.stringify({ userId: details.userId, subject: subjectValue, message: messageValue }),
+          });
+          const payload = await response.json().catch(() => ({})) as { data?: { message?: string }; error?: { message?: string } };
+          if (!response.ok) throw new Error(payload.error?.message || '邮件发送失败，请检查邮件配置。');
+          status.dataset.error = 'false';
+          status.textContent = payload.data?.message || '邮件已发送。';
+          window.setTimeout(close, 900);
+        } catch (error) {
+          status.dataset.error = 'true';
+          status.textContent = error instanceof Error ? error.message : '邮件发送失败，请稍后重试。';
+          send.disabled = false;
+          cancel.disabled = false;
+        }
+      });
+    };
+
+    const enhanceUserContactAction = () => {
+      const details = userEntryDetails();
+      const existing = document.querySelector<HTMLElement>('.sm-contact-user-card');
+      if (!details) {
+        existing?.remove();
+        removeContactUserDialog();
+        return;
+      }
+      if (existing) {
+        const emailLabel = existing.querySelector<HTMLElement>('[data-sm-contact-email]');
+        if (emailLabel) emailLabel.textContent = details.email;
+        return;
+      }
+
+      const card = document.createElement('section');
+      card.className = 'sm-contact-user-card';
+      const copy = document.createElement('div');
+      copy.className = 'sm-contact-user-copy';
+      const title = document.createElement('strong');
+      title.textContent = '联系用户';
+      const email = document.createElement('span');
+      email.dataset.smContactEmail = 'true';
+      email.textContent = details.email;
+      copy.append(title, email);
+      const button = document.createElement('button');
+      button.type = 'button';
+      button.className = 'sm-contact-user-button';
+      button.textContent = '联系用户 / Contact user';
+      button.addEventListener('click', () => openContactUserDialog(details));
+      card.append(copy, button);
+      details.main.prepend(card);
+    };
+
     const translationRouteDetails = () => {
       const match = window.location.pathname.match(
         /\/admin\/content-manager\/(?:collection-types|single-types)\/([^/]+)(?:\/([^/]+))?/,
@@ -2777,6 +2991,7 @@ export default {
     markArticleBilingualNotice();
     syncArticleCategoryField();
     enhanceBlocksToolbar();
+    enhanceUserContactAction();
     injectDashboardHome();
     void resolveAdminRole();
     const actionObserver = new MutationObserver(() => {
@@ -2789,6 +3004,7 @@ export default {
       markArticleBilingualNotice();
       syncArticleCategoryField();
       enhanceBlocksToolbar();
+      enhanceUserContactAction();
       injectDashboardHome();
     });
     actionObserver.observe(document.body, { childList: true, subtree: true });

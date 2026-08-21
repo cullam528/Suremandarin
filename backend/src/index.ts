@@ -1308,6 +1308,62 @@ export default {
         },
       });
     }
+    if (Array.isArray(adminRoutes) && !adminRoutes.some((route: any) => route.path === '/suremandarin/contact-user')) {
+      adminRoutes.push({
+        method: 'POST',
+        path: '/suremandarin/contact-user',
+        handler: async (ctx: any) => {
+          try {
+            const roles = await adminRoleCodes(strapi, ctx.state.user);
+            const allowedRoles = new Set(['strapi-super-admin', 'strapi-editor', 'strapi-author']);
+            if (!roles.some((code: string) => allowedRoles.has(code))) {
+              ctx.throw(403, '当前后台角色没有联系用户权限。');
+              return;
+            }
+
+            const requestedId = String(ctx.request.body?.userId ?? '').trim();
+            const subject = String(ctx.request.body?.subject ?? '').trim().slice(0, 160);
+            const message = String(ctx.request.body?.message ?? '').trim().slice(0, 12000);
+            if (!requestedId || !subject || !message) {
+              ctx.throw(400, '请填写邮件主题和内容。');
+              return;
+            }
+
+            const userQuery = strapi.db.query('plugin::users-permissions.user');
+            let user = await userQuery.findOne({ where: { documentId: requestedId } });
+            if (!user && /^\d+$/.test(requestedId)) {
+              user = await userQuery.findOne({ where: { id: Number(requestedId) } });
+            }
+            if (!user?.email) {
+              ctx.throw(404, '没有找到该用户或用户没有邮箱地址。');
+              return;
+            }
+
+            const from = process.env.EMAIL_FROM ?? 'SureMandarin <hello@suremandarin.com>';
+            const replyTo = process.env.EMAIL_REPLY_TO ?? 'support@suremandarin.com';
+            const htmlMessage = escapeEmailHtml(message).replace(/\r?\n/g, '<br />');
+            await strapi.plugin('email').service('email').send({
+              to: user.email,
+              from,
+              replyTo,
+              subject,
+              text: message,
+              html: `<div style="font-family:Arial,sans-serif;line-height:1.7;color:#27354a;max-width:640px;margin:auto"><p>${htmlMessage}</p><hr style="border:0;border-top:1px solid #e6eaf0;margin:24px 0" /><p style="color:#7b8798;font-size:13px">SureMandarin · hello@suremandarin.com</p></div>`,
+            });
+            ctx.body = { data: { message: '邮件已发送。', email: user.email } };
+          } catch (error) {
+            const sendError = error as Error & { status?: number };
+            const status = Number(sendError.status ?? 500);
+            strapi.log.error(`Unable to contact user: ${sendError.message}`);
+            ctx.status = status;
+            ctx.body = { error: { message: sendError.message || '邮件发送失败，请检查邮件配置。' } };
+          }
+        },
+        config: {
+          policies: ['admin::isAuthenticatedAdmin'],
+        },
+      });
+    }
     strapi.customFields.register({
       name: 'blocknote',
       type: 'json',
