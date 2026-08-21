@@ -1,0 +1,11 @@
+{
+  "name": "suremandarin-resend",
+  "version": "1.0.0",
+  "private": true,
+  "description": "SureMandarin Strapi email provider using the Resend HTTPS API",
+  "main": "index.js",
+  "license": "UNLICENSED",
+  "peerDependencies": {
+    "resend": "6.20.0"
+  }
+}

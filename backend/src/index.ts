@@ -1063,7 +1063,7 @@ async function configurePasswordResetEmail(strapi: Core.Strapi) {
         name: 'SureMandarin',
         email: process.env.EMAIL_FROM_ADDRESS ?? 'hello@suremandarin.com',
       },
-      response_email: process.env.EMAIL_REPLY_TO ?? 'support@suremandarin.com',
+      response_email: process.env.EMAIL_REPLY_TO ?? 'qingniaobird@163.com',
       object: 'Reset your SureMandarin password / 重置 SureMandarin 密码',
       message: `
         <div style="font-family:Arial,sans-serif;line-height:1.7;color:#27354a;max-width:620px;margin:auto">
@@ -1342,7 +1342,7 @@ export default {
             }
 
             const from = process.env.EMAIL_FROM ?? 'SureMandarin <hello@suremandarin.com>';
-            const replyTo = process.env.EMAIL_REPLY_TO ?? 'support@suremandarin.com';
+            const replyTo = process.env.EMAIL_REPLY_TO ?? 'qingniaobird@163.com';
             const htmlMessage = escapeEmailHtml(message).replace(/\r?\n/g, '<br />');
             await strapi.plugin('email').service('email').send({
               to: user.email,

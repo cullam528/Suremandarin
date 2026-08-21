@@ -63,22 +63,16 @@ const config = ({ env }: Core.Config.Shared.ConfigParams): Core.Config.Plugin =>
   },
   email: {
     config: {
-      // Strapi's official Nodemailer provider works with Resend SMTP,
-      // while keeping the project compatible with other SMTP services.
-      provider: env('EMAIL_PROVIDER', 'nodemailer'),
+      // Render Free blocks outbound SMTP ports. Use Resend's HTTPS API on
+      // port 443 instead. SMTP_PASSWORD remains as a temporary compatibility
+      // fallback so the first deployment can reuse the existing Resend key.
+      provider: 'suremandarin-resend',
       providerOptions: {
-        host: env('SMTP_HOST', 'smtp.resend.com'),
-        port: env.int('SMTP_PORT', 465),
-        secure: env.bool('SMTP_SECURE', true),
-        auth: {
-          user: env('SMTP_USERNAME', 'resend'),
-          pass: env('SMTP_PASSWORD', ''),
-        },
-        requireTLS: env.bool('SMTP_REQUIRE_TLS', false),
+        apiKey: env('RESEND_API_KEY', env('SMTP_PASSWORD', '')),
       },
       settings: {
         defaultFrom: env('EMAIL_FROM', 'SureMandarin <hello@suremandarin.com>'),
-        defaultReplyTo: env('EMAIL_REPLY_TO', 'support@suremandarin.com'),
+        defaultReplyTo: env('EMAIL_REPLY_TO', 'qingniaobird@163.com'),
       },
     },
   },

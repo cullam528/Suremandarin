@@ -2,28 +2,25 @@
 
 ## 已完成
 
-- Strapi 已接入官方 `@strapi/provider-email-nodemailer`。
-- 默认使用 Resend SMTP，支持邮箱确认、找回密码以及后续咨询通知。
-- 通过环境变量切换到其他 SMTP 服务，不需要修改代码。
+- Strapi 已接入 SureMandarin 的 Resend HTTPS API 提供器。
+- 默认通过 HTTPS 443 端口发送，支持 Render 免费实例。
+- 支持邮箱确认、找回密码、注册提醒以及后台联系用户。
 
 ## 正式环境需要填写
 
 ```text
-EMAIL_PROVIDER=nodemailer
-SMTP_HOST=smtp.resend.com
-SMTP_PORT=465
-SMTP_SECURE=true
-SMTP_USERNAME=resend
-SMTP_PASSWORD=
-SMTP_REQUIRE_TLS=false
+RESEND_API_KEY=
 EMAIL_FROM=SureMandarin <hello@suremandarin.com>
 EMAIL_FROM_ADDRESS=hello@suremandarin.com
-EMAIL_REPLY_TO=support@suremandarin.com
+EMAIL_REPLY_TO=qingniaobird@163.com
 ADMIN_NOTIFICATION_EMAIL=qingniaobird@163.com
 ```
 
-`SMTP_PASSWORD` 填 Resend API Key。不要把密钥提交到 GitHub，也不要写进
+`RESEND_API_KEY` 填 Resend API Key。不要把密钥提交到 GitHub，也不要写进
 `.env.example`；请只在 Strapi Cloud、Railway 或其他线上主机的环境变量页面填写。
+
+部署过渡期间，如果 Render 里仍只有旧的 `SMTP_PASSWORD`，系统会临时把它当作
+Resend API Key 使用。添加 `RESEND_API_KEY` 并确认邮件正常后，可以删除全部旧 SMTP 变量。
 
 用户注册后，系统会将姓名、邮箱、注册渠道、平台、时区、电话和推荐人信息发送到
 `ADMIN_NOTIFICATION_EMAIL`。邮件使用 `EMAIL_FROM` 作为发件人，并将新用户邮箱设置为
@@ -38,5 +35,6 @@ ADMIN_NOTIFICATION_EMAIL=qingniaobird@163.com
 
 1. 注册新用户，确认收到邮箱确认邮件。
 2. 使用“忘记密码”，确认收到重置密码邮件。
-3. 在 Strapi 后台 Email Templates 中检查发件人和回复地址。
-4. 检查垃圾邮件、退信和 Resend 日志。
+3. 在 Strapi 后台邮件配置页直接发送测试邮件。HTTPS API 不需要 SMTP 连接测试。
+4. 在 Email Templates 中检查发件人和回复地址。
+5. 检查垃圾邮件、退信和 Resend 日志。

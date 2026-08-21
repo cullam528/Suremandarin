@@ -33,29 +33,24 @@ Editor 在后台审核并将课时奖励状态改为 `available` 后，课时才
 - 老师完成课程后，将预约改为“已完成”或通过教师完成接口确认，系统把预留课时改为 `used`，正式扣除 1 课时。
 - 学员页面将预约分成“当前课程（待确认、已确认）”和“历史课程（已完成、已取消）”。
 
-## 邮件服务（Resend SMTP）
+## 邮件服务（Resend HTTPS API）
 
-项目已预置 Strapi 官方 Nodemailer 邮件提供商，默认连接 Resend SMTP。上线前：
+项目使用 Resend 官方 Node.js SDK，通过 HTTPS 443 端口发送邮件，兼容 Render 免费实例。上线前：
 
 1. 在 Resend 创建 API Key，并验证 `suremandarin.com` 域名。
 2. 在生产环境变量中填写：
 
    ```text
-   EMAIL_PROVIDER=nodemailer
-   SMTP_HOST=smtp.resend.com
-   SMTP_PORT=465
-   SMTP_SECURE=true
-   SMTP_USERNAME=resend
-   SMTP_PASSWORD=<Resend API Key>
+   RESEND_API_KEY=<Resend API Key>
    EMAIL_FROM=SureMandarin <hello@suremandarin.com>
-   EMAIL_REPLY_TO=support@suremandarin.com
+   EMAIL_REPLY_TO=qingniaobird@163.com
    ```
 
 3. 在 Strapi 后台的 Email Templates 中确认发件人使用 `EMAIL_FROM`。
 4. 用“忘记密码”和“邮箱确认”各测试一次，再切换到正式环境。
 
-本地开发没有 Resend 密钥时，可以使用 Mailpit/Maildev，将 `SMTP_HOST` 改为
-`127.0.0.1`、`SMTP_PORT` 改为 `1025`、`SMTP_SECURE=false`。
+部署过渡期间，如果还没有添加 `RESEND_API_KEY`，系统会临时读取旧的
+`SMTP_PASSWORD` 作为 Resend API Key；确认新变量生效后即可删除旧 SMTP 变量。
 
 ## PayPal 配置
 
