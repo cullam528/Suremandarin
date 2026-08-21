@@ -174,36 +174,24 @@ export function Footer({
           </h2>
           <div className="sm-footer-qr-grid grid grid-cols-2 gap-3">
             <div className="sm-footer-qr-item text-center">
-              {settings.whatsappQrCode ? (
-                <Image
-                  src={settings.whatsappQrCode}
-                  alt="SureMandarin WhatsApp QR code"
-                  width={112}
-                  height={112}
-                  className="mx-auto size-24 rounded-lg bg-white object-contain"
-                />
-              ) : (
-                <div className="mx-auto grid size-24 place-items-center rounded-lg bg-white text-[10px] font-extrabold text-brand-navy">
-                  QR CODE
-                </div>
-              )}
-              <p className="mt-2 text-xs font-bold lowercase text-slate-300">whatsapp</p>
+              <Image
+                src="/images/wx.webp"
+                alt="SureMandarin WeChat QR code"
+                width={112}
+                height={112}
+                className="mx-auto size-24 rounded-lg bg-white object-contain"
+              />
+              <p className="mt-2 text-xs font-bold lowercase text-slate-300">wechat</p>
             </div>
             <div className="sm-footer-qr-item text-center">
-              {settings.wechatQrCode ? (
-                <Image
-                  src={settings.wechatQrCode}
-                  alt="SureMandarin WeChat QR code"
-                  width={112}
-                  height={112}
-                  className="mx-auto size-24 rounded-lg bg-white object-contain"
-                />
-              ) : (
-                <div className="mx-auto grid size-24 place-items-center rounded-lg bg-white text-[10px] font-extrabold text-brand-navy">
-                  QR CODE
-                </div>
-              )}
-              <p className="mt-2 text-xs font-bold lowercase text-slate-300">wechat</p>
+              <Image
+                src="/images/xhs.webp"
+                alt="SureMandarin Xiaohongshu QR code"
+                width={112}
+                height={112}
+                className="mx-auto size-24 rounded-lg bg-white object-contain"
+              />
+              <p className="mt-2 text-xs font-bold lowercase text-slate-300">xiaohongshu</p>
             </div>
           </div>
         </section>
