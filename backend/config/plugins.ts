@@ -68,7 +68,10 @@ const config = ({ env }: Core.Config.Shared.ConfigParams): Core.Config.Plugin =>
       // fallback so the first deployment can reuse the existing Resend key.
       provider: 'suremandarin-resend',
       providerOptions: {
-        apiKey: env('RESEND_API_KEY', env('SMTP_PASSWORD', '')),
+        apiKey: env('RESEND_API_KEY', ''),
+        apiKeySource: 'RESEND_API_KEY',
+        legacyApiKey: env('SMTP_PASSWORD', ''),
+        legacyApiKeySource: 'SMTP_PASSWORD',
       },
       settings: {
         defaultFrom: env('EMAIL_FROM', 'SureMandarin <hello@suremandarin.com>'),
