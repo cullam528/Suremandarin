@@ -1032,7 +1032,7 @@ async function configureSocialProviders(strapi: Core.Strapi) {
   const grant = (await store.get({ key: 'grant' }) ?? {}) as Record<string, unknown>;
   const callbackBase = process.env.FRONTEND_URL ?? 'http://localhost:3010';
   const providers = [
-    ['google', process.env.GOOGLE_CLIENT_ID, process.env.GOOGLE_CLIENT_SECRET, ['email']],
+    ['google', process.env.GOOGLE_CLIENT_ID, process.env.GOOGLE_CLIENT_SECRET, ['openid', 'email', 'profile']],
     ['linkedin', process.env.LINKEDIN_CLIENT_ID, process.env.LINKEDIN_CLIENT_SECRET, ['r_liteprofile', 'r_emailaddress']],
     ['twitter', process.env.X_CONSUMER_KEY, process.env.X_CONSUMER_SECRET, undefined],
   ] as const;
@@ -1041,6 +1041,49 @@ async function configureSocialProviders(strapi: Core.Strapi) {
     grant[name] = { enabled: true, key, secret, callback: `${callbackBase}/api/auth/oauth/callback/${name}`, ...(scope ? { scope } : {}) };
   }
   await store.set({ key: 'grant', value: grant });
+
+  // Strapi's built-in Google adapter only requests the email scope and turns
+  // the email prefix into the member name. Use Google's OpenID userinfo
+  // endpoint so social registrations receive the verified email and actual
+  // account name while remaining in the same Strapi user table.
+  if (process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET) {
+    const registry = strapi.plugin('users-permissions').service('providers-registry') as {
+      add: (name: string, config: Record<string, unknown>) => void;
+    };
+    registry.add('google', {
+      enabled: true,
+      icon: 'google',
+      grantConfig: {},
+      authCallback: async ({ accessToken }: { accessToken: string }) => {
+        const response = await fetch('https://openidconnect.googleapis.com/v1/userinfo', {
+          headers: { Authorization: `Bearer ${accessToken}`, Accept: 'application/json' },
+        });
+        const profile = await response.json() as {
+          email?: string;
+          email_verified?: boolean;
+          name?: string;
+          given_name?: string;
+          family_name?: string;
+        };
+        if (!response.ok || !profile.email) throw new Error('Google did not return an email address.');
+        if (profile.email_verified === false) throw new Error('Google email address is not verified.');
+        const email = profile.email.trim().toLowerCase();
+        const fullName = String(
+          profile.name
+            ?? [profile.given_name, profile.family_name].filter(Boolean).join(' ')
+            ?? email.split('@')[0],
+        ).trim() || email.split('@')[0];
+        return {
+          username: fullName,
+          email,
+          fullName,
+          displayName: fullName,
+          registrationSource: 'google',
+          registrationPlatform: 'web',
+        };
+      },
+    });
+  }
 }
 
 async function configurePasswordResetEmail(strapi: Core.Strapi) {
@@ -1384,6 +1427,19 @@ export default {
     });
     strapi.db.lifecycles.subscribe({
       models: ['plugin::users-permissions.user'],
+      beforeCreate: (event) => {
+        const data = event.params?.data as Record<string, unknown> | undefined;
+        const provider = String(data?.provider ?? '').trim().toLowerCase();
+        if (!data || !provider || provider === 'local') return;
+        const fallbackName = String(data.fullName ?? data.displayName ?? data.username ?? '').trim();
+        if (!data.fullName && fallbackName) data.fullName = fallbackName;
+        if (!data.displayName && fallbackName) data.displayName = fallbackName;
+        if (!data.registrationSource) data.registrationSource = provider === 'twitter' ? 'x' : provider;
+        if (!data.registrationPlatform) data.registrationPlatform = 'web';
+        if (!data.preferredLanguage) data.preferredLanguage = 'en';
+        if (!data.privacyPolicyVersion) data.privacyPolicyVersion = '2026-08';
+        if (!data.privacyConsentAt) data.privacyConsentAt = new Date();
+      },
       beforeUpdate: async (event) => {
         const data = event.params?.data as Record<string, unknown> | undefined;
         if (!data || !Object.prototype.hasOwnProperty.call(data, 'lessonHoursBalance')) return;

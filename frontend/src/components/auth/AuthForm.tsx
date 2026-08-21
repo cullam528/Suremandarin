@@ -30,6 +30,7 @@ export function AuthForm({
   const [error, setError] = useState("");
   const [referralCode, setReferralCode] = useState("");
   const [inviterName, setInviterName] = useState("");
+  const [sourceChannel, setSourceChannel] = useState("website");
   const [captchaProof, setCaptchaProof] = useState<CaptchaProof | null>(null);
   const [captchaVersion, setCaptchaVersion] = useState(0);
   useEffect(() => {
@@ -37,10 +38,12 @@ export function AuthForm({
     const reason = params.get("oauth");
     const referralCodeFromUrl = register ? params.get("ref")?.trim() ?? "" : "";
     const inviterNameFromUrl = register ? params.get("refName")?.trim() ?? "" : "";
+    const sourceChannelFromUrl = register ? params.get("source")?.trim() || "website" : "website";
     const timer = window.setTimeout(() => {
       if (register) {
         setReferralCode(referralCodeFromUrl);
         setInviterName(inviterNameFromUrl);
+        setSourceChannel(sourceChannelFromUrl);
       }
       if (reason) {
         setError(
@@ -48,14 +51,30 @@ export function AuthForm({
             ? zh
               ? "第三方登录已取消。"
               : "Social sign-in was cancelled."
-            : zh
-              ? "第三方登录尚未配置或未能完成。"
-              : "Social sign-in is not configured or could not be completed.",
+            : reason === "missing_email"
+              ? zh
+                ? "该平台没有提供电子邮箱，请先在平台账户中公开或验证邮箱后重试。"
+                : "The provider did not share an email address. Verify or allow email access and try again."
+              : reason === "account_exists"
+                ? zh
+                  ? "该邮箱已注册，请先用原有方式登录。为保护账户安全，暂不自动合并账号。"
+                  : "This email is already registered. Please use your original sign-in method; accounts are not merged automatically for security."
+                : zh
+                  ? "第三方登录未能完成，请稍后重试。"
+                  : "Social sign-in could not be completed. Please try again.",
         );
       }
     }, 0);
     return () => window.clearTimeout(timer);
   }, [register, zh]);
+
+  function socialHref(provider: "google" | "linkedin" | "twitter") {
+    const query = new URLSearchParams({ locale, mode });
+    if (register && referralCode) query.set("ref", referralCode);
+    if (register && inviterName) query.set("refName", inviterName);
+    if (register) query.set("source", sourceChannel);
+    return `/api/auth/oauth/${provider}?${query.toString()}`;
+  }
   async function submit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     setLoading(true);
@@ -310,24 +329,35 @@ export function AuthForm({
           </div>
           <div className="grid gap-3 sm:grid-cols-3">
             <Link
-              href="/api/auth/oauth/google"
+              href={socialHref("google")}
               className="rounded-xl border border-brand-line px-4 py-3 text-center text-sm font-bold text-brand-navy hover:border-brand-blue"
             >
               Google
             </Link>
             <Link
-              href="/api/auth/oauth/linkedin"
+              href={socialHref("linkedin")}
               className="rounded-xl border border-brand-line px-4 py-3 text-center text-sm font-bold text-brand-navy hover:border-brand-blue"
             >
               LinkedIn
             </Link>
             <Link
-              href="/api/auth/oauth/twitter"
+              href={socialHref("twitter")}
               className="rounded-xl border border-brand-line px-4 py-3 text-center text-sm font-bold text-brand-navy hover:border-brand-blue"
             >
               X
             </Link>
           </div>
+          <p className="mt-4 text-center text-xs leading-5 text-slate-500">
+            {zh ? "继续即表示您同意" : "By continuing, you agree to our"}{" "}
+            <Link className="font-bold text-brand-blue hover:underline" href={`/${locale}/terms`}>
+              {zh ? "使用条款" : "Terms of Use"}
+            </Link>{" "}
+            {zh ? "和" : "and"}{" "}
+            <Link className="font-bold text-brand-blue hover:underline" href={`/${locale}/privacy`}>
+              {zh ? "隐私政策" : "Privacy Policy"}
+            </Link>
+            。
+          </p>
           <div className="my-7 flex items-center gap-3 text-xs text-slate-400">
             <span className="h-px flex-1 bg-brand-line" />
             {zh ? "账户安全保障" : "SECURE ACCOUNT"}
