@@ -59,6 +59,10 @@ export function AuthForm({
                 ? zh
                   ? "该邮箱已注册，请先用原有方式登录。为保护账户安全，暂不自动合并账号。"
                   : "This email is already registered. Please use your original sign-in method; accounts are not merged automatically for security."
+                : reason === "not_configured"
+                  ? zh
+                    ? "Apple 登录尚未完成后台配置，请稍后再试。"
+                    : "Apple sign-in has not been configured yet. Please try again later."
                 : zh
                   ? "第三方登录未能完成，请稍后重试。"
                   : "Social sign-in could not be completed. Please try again.",
@@ -68,7 +72,7 @@ export function AuthForm({
     return () => window.clearTimeout(timer);
   }, [register, zh]);
 
-  function socialHref(provider: "google" | "linkedin" | "twitter") {
+  function socialHref(provider: "google" | "apple" | "twitter") {
     const query = new URLSearchParams({ locale, mode });
     if (register && referralCode) query.set("ref", referralCode);
     if (register && inviterName) query.set("refName", inviterName);
@@ -335,10 +339,10 @@ export function AuthForm({
               Google
             </Link>
             <Link
-              href={socialHref("linkedin")}
+              href={socialHref("apple")}
               className="rounded-xl border border-brand-line px-4 py-3 text-center text-sm font-bold text-brand-navy hover:border-brand-blue"
             >
-              LinkedIn
+              Apple
             </Link>
             <Link
               href={socialHref("twitter")}
