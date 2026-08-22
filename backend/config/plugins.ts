@@ -1,4 +1,5 @@
 import type { Core } from '@strapi/strapi';
+import documentationSettings from '../src/extensions/documentation/config/settings.json';
 
 const allowedMediaTypes = [
   'image/*',
@@ -23,6 +24,10 @@ const deniedExecutableTypes = [
 ];
 
 const config = ({ env }: Core.Config.Shared.ConfigParams): Core.Config.Plugin => ({
+  documentation: {
+    enabled: true,
+    config: documentationSettings,
+  },
   i18n: {
     enabled: true,
     config: {

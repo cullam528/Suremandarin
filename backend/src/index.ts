@@ -6,6 +6,7 @@ import {
   syncAllLessonHoursBalances,
   validateLessonHoursTarget,
 } from './api/lesson-credit/services/balance';
+import { appApiDocumentation } from './documentation/app-api';
 
 const courses = [
   ['Private Course','private'], ['Group Course','group'], ['Learn & Travel Course','learn-travel'],
@@ -19,6 +20,14 @@ const publicReadActions = [
   'api::course.course.findOne',
   'api::article.article.find',
   'api::article.article.findOne',
+  'api::article-category.article-category.find',
+  'api::announcement.announcement.find',
+  'api::app-banner.app-banner.find',
+  'api::app-version.app-version.find',
+  'api::daily-challenge-day.daily-challenge-day.find',
+  'api::faq.faq.find',
+  'api::membership-plan.membership-plan.find',
+  'api::static-page.static-page.find',
   'api::testimonial.testimonial.find',
   'api::testimonial.testimonial.findOne',
   'api::inquiry.inquiry.create',
@@ -1211,6 +1220,15 @@ async function repairEnglishHomePagePublication(strapi: Core.Strapi) {
 
 export default {
   register({ strapi }: { strapi: Core.Strapi }) {
+    const documentationPlugin = strapi.plugin('documentation');
+    if (documentationPlugin) {
+      documentationPlugin.service('override').registerOverride(appApiDocumentation, {
+        // The mobile contract deliberately lists only client-facing operations.
+        // CMS management CRUD stays in Strapi Admin and is not part of the app API.
+        excludeFromGeneration: Object.keys(strapi.apis),
+      });
+    }
+
     const adminRoutes = (strapi.admin as any)?.routes?.admin?.routes;
     if (Array.isArray(adminRoutes) && !adminRoutes.some((route: any) => route.path === '/suremandarin/dashboard-summary')) {
       adminRoutes.push({

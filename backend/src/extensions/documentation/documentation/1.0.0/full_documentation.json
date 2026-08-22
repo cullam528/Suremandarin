@@ -1,0 +1,3433 @@
+{
+  "openapi": "3.0.0",
+  "info": {
+    "version": "1.0.0",
+    "title": "SureMandarin App API",
+    "description": "Official REST API contract for the SureMandarin website, iOS app, Android app, and mini program. Public content endpoints do not require a token. Member endpoints require Authorization: Bearer <JWT>.",
+    "termsOfService": "https://www.suremandarin.com/en/terms",
+    "contact": {
+      "name": "SureMandarin Technical Support",
+      "email": "hello@suremandarin.com",
+      "url": "https://www.suremandarin.com/en/contact"
+    },
+    "license": {
+      "name": "Apache 2.0",
+      "url": "https://www.apache.org/licenses/LICENSE-2.0.html"
+    },
+    "x-generation-date": "2026-08-22T08:30:20.858Z"
+  },
+  "x-strapi-config": {
+    "plugins": []
+  },
+  "servers": [
+    {
+      "url": "https://api.suremandarin.com/api",
+      "description": "Production"
+    },
+    {
+      "url": "http://localhost:1337/api",
+      "description": "Local development"
+    }
+  ],
+  "externalDocs": {
+    "description": "SureMandarin website",
+    "url": "https://www.suremandarin.com"
+  },
+  "security": [
+    {
+      "bearerAuth": []
+    }
+  ],
+  "components": {
+    "securitySchemes": {
+      "bearerAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "JWT",
+        "description": "JWT returned by a successful login or registration. Send it as: Authorization: Bearer <JWT>."
+      }
+    },
+    "schemas": {
+      "Error": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "nullable": true
+          },
+          "error": {
+            "type": "object",
+            "properties": {
+              "status": {
+                "type": "integer"
+              },
+              "name": {
+                "type": "string"
+              },
+              "message": {
+                "type": "string"
+              },
+              "details": {
+                "type": "object",
+                "additionalProperties": true
+              }
+            }
+          }
+        }
+      },
+      "StrapiListResponse": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": true
+            }
+          },
+          "meta": {
+            "type": "object",
+            "properties": {
+              "pagination": {
+                "type": "object",
+                "properties": {
+                  "page": {
+                    "type": "integer"
+                  },
+                  "pageSize": {
+                    "type": "integer"
+                  },
+                  "pageCount": {
+                    "type": "integer"
+                  },
+                  "total": {
+                    "type": "integer"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "StrapiSingleResponse": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "type": "object",
+            "additionalProperties": true
+          },
+          "meta": {
+            "type": "object",
+            "additionalProperties": true
+          }
+        }
+      },
+      "Member": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer"
+          },
+          "username": {
+            "type": "string"
+          },
+          "email": {
+            "type": "string",
+            "format": "email"
+          },
+          "fullName": {
+            "type": "string"
+          },
+          "displayName": {
+            "type": "string"
+          },
+          "country": {
+            "type": "string"
+          },
+          "preferredLanguage": {
+            "type": "string",
+            "enum": [
+              "en",
+              "zh-CN"
+            ]
+          },
+          "timezone": {
+            "type": "string"
+          },
+          "referralCode": {
+            "type": "string"
+          },
+          "membershipLevel": {
+            "type": "string",
+            "enum": [
+              "registered",
+              "vip",
+              "svip"
+            ]
+          },
+          "membershipStatus": {
+            "type": "string"
+          },
+          "lessonHoursBalance": {
+            "type": "number"
+          }
+        }
+      },
+      "AuthResponse": {
+        "type": "object",
+        "required": [
+          "jwt",
+          "user"
+        ],
+        "properties": {
+          "jwt": {
+            "type": "string"
+          },
+          "user": {
+            "$ref": "#/components/schemas/Member"
+          }
+        }
+      },
+      "RegisterRequest": {
+        "type": "object",
+        "required": [
+          "username",
+          "email",
+          "password"
+        ],
+        "properties": {
+          "username": {
+            "type": "string",
+            "minLength": 3
+          },
+          "email": {
+            "type": "string",
+            "format": "email"
+          },
+          "password": {
+            "type": "string",
+            "minLength": 6,
+            "format": "password"
+          },
+          "fullName": {
+            "type": "string"
+          },
+          "displayName": {
+            "type": "string"
+          },
+          "phone": {
+            "type": "string"
+          },
+          "country": {
+            "type": "string"
+          },
+          "preferredLanguage": {
+            "type": "string",
+            "enum": [
+              "en",
+              "zh-CN"
+            ]
+          },
+          "timezone": {
+            "type": "string"
+          },
+          "registrationSource": {
+            "type": "string"
+          },
+          "registrationPlatform": {
+            "type": "string",
+            "enum": [
+              "web",
+              "miniprogram",
+              "ios",
+              "android"
+            ]
+          },
+          "marketingConsent": {
+            "type": "boolean"
+          },
+          "privacyPolicyVersion": {
+            "type": "string"
+          },
+          "privacyConsentAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "LoginRequest": {
+        "type": "object",
+        "required": [
+          "identifier",
+          "password"
+        ],
+        "properties": {
+          "identifier": {
+            "type": "string"
+          },
+          "password": {
+            "type": "string",
+            "format": "password"
+          }
+        }
+      },
+      "ForgotPasswordRequest": {
+        "type": "object",
+        "required": [
+          "email"
+        ],
+        "properties": {
+          "email": {
+            "type": "string",
+            "format": "email"
+          }
+        }
+      },
+      "ResetPasswordRequest": {
+        "type": "object",
+        "required": [
+          "code",
+          "password",
+          "passwordConfirmation"
+        ],
+        "properties": {
+          "code": {
+            "type": "string"
+          },
+          "password": {
+            "type": "string",
+            "format": "password"
+          },
+          "passwordConfirmation": {
+            "type": "string",
+            "format": "password"
+          }
+        }
+      },
+      "InquiryRequest": {
+        "type": "object",
+        "required": [
+          "data"
+        ],
+        "properties": {
+          "data": {
+            "type": "object",
+            "required": [
+              "name",
+              "email",
+              "courseSlug"
+            ],
+            "properties": {
+              "name": {
+                "type": "string"
+              },
+              "email": {
+                "type": "string",
+                "format": "email"
+              },
+              "courseSlug": {
+                "type": "string"
+              },
+              "currentLevel": {
+                "type": "string",
+                "enum": [
+                  "beginner",
+                  "intermediate",
+                  "advanced",
+                  "not-sure"
+                ]
+              },
+              "learningGoal": {
+                "type": "string"
+              },
+              "preferredTime": {
+                "type": "string"
+              },
+              "phone": {
+                "type": "string"
+              },
+              "targetCourse": {
+                "type": "string"
+              },
+              "weeklyStudyTime": {
+                "type": "string"
+              },
+              "preferredDate": {
+                "type": "string",
+                "format": "date"
+              },
+              "message": {
+                "type": "string"
+              },
+              "sourcePage": {
+                "type": "string"
+              },
+              "campaign": {
+                "type": "string"
+              },
+              "leadSource": {
+                "type": "string"
+              },
+              "referralCode": {
+                "type": "string"
+              },
+              "timezone": {
+                "type": "string"
+              },
+              "platform": {
+                "type": "string",
+                "enum": [
+                  "web",
+                  "miniprogram",
+                  "ios",
+                  "android"
+                ]
+              },
+              "privacyConsent": {
+                "type": "boolean"
+              },
+              "testScore": {
+                "type": "integer"
+              },
+              "testTotal": {
+                "type": "integer"
+              },
+              "testLevel": {
+                "type": "string"
+              },
+              "testBreakdown": {
+                "type": "object",
+                "additionalProperties": true
+              },
+              "testAnswers": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "additionalProperties": true
+                }
+              }
+            }
+          }
+        }
+      },
+      "DailyProgressRequest": {
+        "type": "object",
+        "required": [
+          "data"
+        ],
+        "properties": {
+          "data": {
+            "type": "object",
+            "required": [
+              "dayNumber"
+            ],
+            "properties": {
+              "dayNumber": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 7
+              },
+              "completedAt": {
+                "type": "string",
+                "format": "date-time"
+              },
+              "streak": {
+                "type": "integer",
+                "minimum": 1
+              },
+              "source": {
+                "type": "string"
+              },
+              "platform": {
+                "type": "string",
+                "enum": [
+                  "web",
+                  "miniprogram",
+                  "ios",
+                  "android"
+                ]
+              }
+            }
+          }
+        }
+      },
+      "DailyProgressResponse": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "type": "object",
+            "properties": {
+              "completed": {
+                "type": "array",
+                "items": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 7
+                }
+              },
+              "streak": {
+                "type": "integer"
+              },
+              "lastCompletedAt": {
+                "type": "string",
+                "format": "date-time",
+                "nullable": true
+              },
+              "reward": {
+                "type": "object",
+                "nullable": true,
+                "properties": {
+                  "status": {
+                    "type": "string"
+                  },
+                  "hours": {
+                    "type": "number"
+                  },
+                  "grantedAt": {
+                    "type": "string",
+                    "format": "date-time",
+                    "nullable": true
+                  }
+                }
+              }
+            }
+          },
+          "saved": {
+            "type": "boolean"
+          },
+          "recordId": {
+            "type": "integer"
+          }
+        }
+      },
+      "LessonBookingRequest": {
+        "type": "object",
+        "required": [
+          "data"
+        ],
+        "properties": {
+          "data": {
+            "type": "object",
+            "required": [
+              "courseSlug",
+              "requestedStartAt",
+              "timezone"
+            ],
+            "properties": {
+              "courseSlug": {
+                "type": "string"
+              },
+              "requestedStartAt": {
+                "type": "string",
+                "format": "date-time"
+              },
+              "requestedEndAt": {
+                "type": "string",
+                "format": "date-time"
+              },
+              "timezone": {
+                "type": "string"
+              },
+              "teacherName": {
+                "type": "string"
+              },
+              "source": {
+                "type": "string",
+                "enum": [
+                  "web",
+                  "miniprogram",
+                  "ios",
+                  "android"
+                ]
+              },
+              "notes": {
+                "type": "string"
+              }
+            }
+          }
+        }
+      },
+      "LessonBooking": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "requested",
+              "confirmed",
+              "completed",
+              "cancelled"
+            ]
+          },
+          "requestedStartAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "requestedEndAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "timezone": {
+            "type": "string"
+          },
+          "teacherUserId": {
+            "type": "integer",
+            "nullable": true
+          },
+          "teacherName": {
+            "type": "string",
+            "nullable": true
+          },
+          "notes": {
+            "type": "string"
+          },
+          "confirmedAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "completedAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "cancelledAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "course": {
+            "type": "object",
+            "nullable": true,
+            "additionalProperties": true
+          }
+        }
+      },
+      "TestimonialRequest": {
+        "type": "object",
+        "required": [
+          "quote",
+          "rating"
+        ],
+        "properties": {
+          "quote": {
+            "type": "string",
+            "minLength": 10,
+            "maxLength": 1000
+          },
+          "country": {
+            "type": "string"
+          },
+          "rating": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 5
+          }
+        }
+      },
+      "AccountOverview": {
+        "type": "object",
+        "properties": {
+          "subscriptions": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": true
+            }
+          },
+          "orders": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": true
+            }
+          },
+          "enrollments": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": true
+            }
+          },
+          "progress": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": true
+            }
+          },
+          "lessonCredits": {
+            "type": "object",
+            "properties": {
+              "availableHours": {
+                "type": "number"
+              },
+              "reservedHours": {
+                "type": "number"
+              },
+              "bySource": {
+                "type": "object",
+                "additionalProperties": {
+                  "type": "number"
+                }
+              },
+              "credits": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "additionalProperties": true
+                }
+              }
+            }
+          },
+          "lessonBookings": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/LessonBooking"
+            }
+          },
+          "referralStats": {
+            "type": "object",
+            "properties": {
+              "invitedCount": {
+                "type": "integer"
+              },
+              "registeredCount": {
+                "type": "integer"
+              },
+              "enrolledCount": {
+                "type": "integer"
+              },
+              "pendingRewardHours": {
+                "type": "number"
+              },
+              "earnedRewardHours": {
+                "type": "number"
+              }
+            }
+          },
+          "referrals": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": true
+            }
+          }
+        }
+      },
+      "PayPalOrderRequest": {
+        "type": "object",
+        "required": [
+          "productType"
+        ],
+        "properties": {
+          "productType": {
+            "type": "string",
+            "enum": [
+              "membership",
+              "course"
+            ]
+          },
+          "planDocumentId": {
+            "type": "string"
+          },
+          "courseDocumentId": {
+            "type": "string"
+          },
+          "billingCycle": {
+            "type": "string",
+            "enum": [
+              "monthly",
+              "yearly"
+            ],
+            "default": "monthly"
+          },
+          "platform": {
+            "type": "string",
+            "enum": [
+              "web",
+              "miniprogram",
+              "ios",
+              "android"
+            ]
+          }
+        }
+      },
+      "PayPalOrderResponse": {
+        "type": "object",
+        "properties": {
+          "orderNumber": {
+            "type": "string"
+          },
+          "paypalOrderId": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          },
+          "links": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": true
+            }
+          }
+        }
+      },
+      "PayPalCaptureRequest": {
+        "type": "object",
+        "required": [
+          "paypalOrderId"
+        ],
+        "properties": {
+          "paypalOrderId": {
+            "type": "string"
+          }
+        }
+      },
+      "PayPalSubscriptionRequest": {
+        "type": "object",
+        "required": [
+          "planDocumentId"
+        ],
+        "properties": {
+          "planDocumentId": {
+            "type": "string"
+          },
+          "billingCycle": {
+            "type": "string",
+            "enum": [
+              "monthly",
+              "yearly"
+            ],
+            "default": "monthly"
+          },
+          "returnUrl": {
+            "type": "string",
+            "format": "uri"
+          },
+          "cancelUrl": {
+            "type": "string",
+            "format": "uri"
+          }
+        }
+      }
+    }
+  },
+  "paths": {
+    "/auth/local/register": {
+      "post": {
+        "tags": [
+          "Authentication"
+        ],
+        "summary": "Register a member",
+        "description": "Creates a registered member and returns a JWT. Mobile clients should set registrationPlatform to ios, android, or miniprogram.",
+        "operationId": "registerMember",
+        "security": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RegisterRequest"
+              },
+              "example": {
+                "username": "jessica",
+                "email": "learner@example.com",
+                "password": "StrongPassword123",
+                "fullName": "Jessica Lee",
+                "preferredLanguage": "en",
+                "registrationPlatform": "ios",
+                "privacyConsentAt": "2026-08-22T08:00:00.000Z"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Member created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Login required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Insufficient permission or membership level",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/auth/local": {
+      "post": {
+        "tags": [
+          "Authentication"
+        ],
+        "summary": "Sign in with email and password",
+        "operationId": "loginMember",
+        "security": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LoginRequest"
+              },
+              "example": {
+                "identifier": "learner@example.com",
+                "password": "StrongPassword123"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Signed in",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Login required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Insufficient permission or membership level",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/auth/forgot-password": {
+      "post": {
+        "tags": [
+          "Authentication"
+        ],
+        "summary": "Request a password reset email",
+        "operationId": "forgotPassword",
+        "security": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ForgotPasswordRequest"
+              },
+              "example": {
+                "email": "learner@example.com"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "ok": {
+                      "type": "boolean"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Login required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Insufficient permission or membership level",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/auth/reset-password": {
+      "post": {
+        "tags": [
+          "Authentication"
+        ],
+        "summary": "Reset a password",
+        "operationId": "resetPassword",
+        "security": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ResetPasswordRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Login required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Insufficient permission or membership level",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/connect/{provider}": {
+      "get": {
+        "tags": [
+          "Authentication"
+        ],
+        "summary": "Start social login",
+        "description": "Browser redirect flow for Google, Facebook, or X. The provider callback ultimately returns through the configured SureMandarin frontend callback.",
+        "operationId": "startSocialLogin",
+        "security": [],
+        "parameters": [
+          {
+            "name": "provider",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "google",
+                "facebook",
+                "twitter"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "302": {
+            "description": "Redirect to the social provider"
+          },
+          "400": {
+            "description": "Provider is disabled or misconfigured"
+          }
+        }
+      }
+    },
+    "/auth/{provider}/callback": {
+      "get": {
+        "tags": [
+          "Authentication"
+        ],
+        "summary": "Complete social login",
+        "description": "Exchanges the provider callback code for a SureMandarin JWT. Usually called by the website callback rather than directly by the app.",
+        "operationId": "completeSocialLogin",
+        "security": [],
+        "parameters": [
+          {
+            "name": "provider",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "google",
+                "facebook",
+                "twitter"
+              ]
+            }
+          },
+          {
+            "name": "access_token",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Login required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Insufficient permission or membership level",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/users/me": {
+      "get": {
+        "tags": [
+          "Account"
+        ],
+        "summary": "Get the signed-in member profile",
+        "operationId": "getCurrentMember",
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Member"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Login required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Insufficient permission or membership level",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/home-page": {
+      "get": {
+        "tags": [
+          "App configuration"
+        ],
+        "summary": "Get homepage configuration",
+        "description": "Localized homepage text, slides, SEO, and linked media.",
+        "operationId": "getAppconfiguration",
+        "security": [],
+        "parameters": [
+          {
+            "name": "locale",
+            "in": "query",
+            "description": "Content language.",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "en",
+                "zh"
+              ],
+              "default": "en"
+            }
+          },
+          {
+            "name": "populate",
+            "in": "query",
+            "description": "Relations and media to include. Example: cover,category or *.",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StrapiSingleResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Login required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Insufficient permission or membership level",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/global-setting": {
+      "get": {
+        "tags": [
+          "App configuration"
+        ],
+        "summary": "Get global configuration",
+        "description": "Logo, contact methods, social links, footer, QR codes, and site-level settings.",
+        "operationId": "getAppconfiguration",
+        "security": [],
+        "parameters": [
+          {
+            "name": "locale",
+            "in": "query",
+            "description": "Content language.",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "en",
+                "zh"
+              ],
+              "default": "en"
+            }
+          },
+          {
+            "name": "populate",
+            "in": "query",
+            "description": "Relations and media to include. Example: cover,category or *.",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StrapiSingleResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Login required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Insufficient permission or membership level",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/app-banners": {
+      "get": {
+        "tags": [
+          "App configuration"
+        ],
+        "summary": "List app banners",
+        "description": "Banners can be filtered by platform, placement, enabled state, and active dates.",
+        "operationId": "listAppconfiguration",
+        "security": [],
+        "parameters": [
+          {
+            "name": "locale",
+            "in": "query",
+            "description": "Content language.",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "en",
+                "zh"
+              ],
+              "default": "en"
+            }
+          },
+          {
+            "name": "populate",
+            "in": "query",
+            "description": "Relations and media to include. Example: cover,category or *.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "filters",
+            "in": "query",
+            "description": "Strapi filter expression, for example filters[enabled][$eq]=true.",
+            "schema": {
+              "type": "object"
+            }
+          },
+          {
+            "name": "sort",
+            "in": "query",
+            "description": "Sort expression, for example publishDate:desc.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "pagination[page]",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "default": 1
+            }
+          },
+          {
+            "name": "pagination[pageSize]",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100,
+              "default": 25
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StrapiListResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Login required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Insufficient permission or membership level",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/app-versions": {
+      "get": {
+        "tags": [
+          "App configuration"
+        ],
+        "summary": "List supported app versions",
+        "description": "Used by mobile clients to check minimum versions and store update URLs.",
+        "operationId": "listAppconfiguration",
+        "security": [],
+        "parameters": [
+          {
+            "name": "locale",
+            "in": "query",
+            "description": "Content language.",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "en",
+                "zh"
+              ],
+              "default": "en"
+            }
+          },
+          {
+            "name": "populate",
+            "in": "query",
+            "description": "Relations and media to include. Example: cover,category or *.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "filters",
+            "in": "query",
+            "description": "Strapi filter expression, for example filters[enabled][$eq]=true.",
+            "schema": {
+              "type": "object"
+            }
+          },
+          {
+            "name": "sort",
+            "in": "query",
+            "description": "Sort expression, for example publishDate:desc.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "pagination[page]",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "default": 1
+            }
+          },
+          {
+            "name": "pagination[pageSize]",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100,
+              "default": 25
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StrapiListResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Login required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Insufficient permission or membership level",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/courses": {
+      "get": {
+        "tags": [
+          "Courses"
+        ],
+        "summary": "List courses",
+        "description": "Six course categories with localized descriptions, covers, access level, delivery mode, and purchase metadata.",
+        "operationId": "listCourses",
+        "security": [],
+        "parameters": [
+          {
+            "name": "locale",
+            "in": "query",
+            "description": "Content language.",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "en",
+                "zh"
+              ],
+              "default": "en"
+            }
+          },
+          {
+            "name": "populate",
+            "in": "query",
+            "description": "Relations and media to include. Example: cover,category or *.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "filters",
+            "in": "query",
+            "description": "Strapi filter expression, for example filters[enabled][$eq]=true.",
+            "schema": {
+              "type": "object"
+            }
+          },
+          {
+            "name": "sort",
+            "in": "query",
+            "description": "Sort expression, for example publishDate:desc.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "pagination[page]",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "default": 1
+            }
+          },
+          {
+            "name": "pagination[pageSize]",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100,
+              "default": 25
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StrapiListResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Login required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Insufficient permission or membership level",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/article-categories": {
+      "get": {
+        "tags": [
+          "Knowledge"
+        ],
+        "summary": "List knowledge categories",
+        "description": "News & Insights, Study Tips, Chinese Culture, and Learning Strategies.",
+        "operationId": "listKnowledge",
+        "security": [],
+        "parameters": [
+          {
+            "name": "locale",
+            "in": "query",
+            "description": "Content language.",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "en",
+                "zh"
+              ],
+              "default": "en"
+            }
+          },
+          {
+            "name": "populate",
+            "in": "query",
+            "description": "Relations and media to include. Example: cover,category or *.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "filters",
+            "in": "query",
+            "description": "Strapi filter expression, for example filters[enabled][$eq]=true.",
+            "schema": {
+              "type": "object"
+            }
+          },
+          {
+            "name": "sort",
+            "in": "query",
+            "description": "Sort expression, for example publishDate:desc.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "pagination[page]",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "default": 1
+            }
+          },
+          {
+            "name": "pagination[pageSize]",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100,
+              "default": 25
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StrapiListResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Login required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Insufficient permission or membership level",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/articles": {
+      "get": {
+        "tags": [
+          "Knowledge"
+        ],
+        "summary": "List knowledge articles",
+        "description": "Use locale, category filters, slug filters, access level, and publication sorting.",
+        "operationId": "listKnowledge",
+        "security": [],
+        "parameters": [
+          {
+            "name": "locale",
+            "in": "query",
+            "description": "Content language.",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "en",
+                "zh"
+              ],
+              "default": "en"
+            }
+          },
+          {
+            "name": "populate",
+            "in": "query",
+            "description": "Relations and media to include. Example: cover,category or *.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "filters",
+            "in": "query",
+            "description": "Strapi filter expression, for example filters[enabled][$eq]=true.",
+            "schema": {
+              "type": "object"
+            }
+          },
+          {
+            "name": "sort",
+            "in": "query",
+            "description": "Sort expression, for example publishDate:desc.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "pagination[page]",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "default": 1
+            }
+          },
+          {
+            "name": "pagination[pageSize]",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100,
+              "default": 25
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StrapiListResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Login required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Insufficient permission or membership level",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/announcements": {
+      "get": {
+        "tags": [
+          "Knowledge"
+        ],
+        "summary": "List announcements",
+        "description": "Localized notices and newsroom content.",
+        "operationId": "listKnowledge",
+        "security": [],
+        "parameters": [
+          {
+            "name": "locale",
+            "in": "query",
+            "description": "Content language.",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "en",
+                "zh"
+              ],
+              "default": "en"
+            }
+          },
+          {
+            "name": "populate",
+            "in": "query",
+            "description": "Relations and media to include. Example: cover,category or *.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "filters",
+            "in": "query",
+            "description": "Strapi filter expression, for example filters[enabled][$eq]=true.",
+            "schema": {
+              "type": "object"
+            }
+          },
+          {
+            "name": "sort",
+            "in": "query",
+            "description": "Sort expression, for example publishDate:desc.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "pagination[page]",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "default": 1
+            }
+          },
+          {
+            "name": "pagination[pageSize]",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100,
+              "default": 25
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StrapiListResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Login required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Insufficient permission or membership level",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/faqs": {
+      "get": {
+        "tags": [
+          "Knowledge"
+        ],
+        "summary": "List frequently asked questions",
+        "description": "Localized FAQ content ordered by sortOrder.",
+        "operationId": "listKnowledge",
+        "security": [],
+        "parameters": [
+          {
+            "name": "locale",
+            "in": "query",
+            "description": "Content language.",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "en",
+                "zh"
+              ],
+              "default": "en"
+            }
+          },
+          {
+            "name": "populate",
+            "in": "query",
+            "description": "Relations and media to include. Example: cover,category or *.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "filters",
+            "in": "query",
+            "description": "Strapi filter expression, for example filters[enabled][$eq]=true.",
+            "schema": {
+              "type": "object"
+            }
+          },
+          {
+            "name": "sort",
+            "in": "query",
+            "description": "Sort expression, for example publishDate:desc.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "pagination[page]",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "default": 1
+            }
+          },
+          {
+            "name": "pagination[pageSize]",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100,
+              "default": 25
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StrapiListResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Login required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Insufficient permission or membership level",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/static-pages": {
+      "get": {
+        "tags": [
+          "Knowledge"
+        ],
+        "summary": "List managed static pages",
+        "description": "CMS-managed reusable content pages.",
+        "operationId": "listKnowledge",
+        "security": [],
+        "parameters": [
+          {
+            "name": "locale",
+            "in": "query",
+            "description": "Content language.",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "en",
+                "zh"
+              ],
+              "default": "en"
+            }
+          },
+          {
+            "name": "populate",
+            "in": "query",
+            "description": "Relations and media to include. Example: cover,category or *.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "filters",
+            "in": "query",
+            "description": "Strapi filter expression, for example filters[enabled][$eq]=true.",
+            "schema": {
+              "type": "object"
+            }
+          },
+          {
+            "name": "sort",
+            "in": "query",
+            "description": "Sort expression, for example publishDate:desc.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "pagination[page]",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "default": 1
+            }
+          },
+          {
+            "name": "pagination[pageSize]",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100,
+              "default": 25
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StrapiListResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Login required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Insufficient permission or membership level",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/daily-challenge-days": {
+      "get": {
+        "tags": [
+          "Daily challenge"
+        ],
+        "summary": "List seven-day challenge lessons",
+        "description": "Request enabled lessons sorted by dayNumber. Populate image and use audioUrl for speaking practice.",
+        "operationId": "listDailychallenge",
+        "security": [],
+        "parameters": [
+          {
+            "name": "locale",
+            "in": "query",
+            "description": "Content language.",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "en",
+                "zh"
+              ],
+              "default": "en"
+            }
+          },
+          {
+            "name": "populate",
+            "in": "query",
+            "description": "Relations and media to include. Example: cover,category or *.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "filters",
+            "in": "query",
+            "description": "Strapi filter expression, for example filters[enabled][$eq]=true.",
+            "schema": {
+              "type": "object"
+            }
+          },
+          {
+            "name": "sort",
+            "in": "query",
+            "description": "Sort expression, for example publishDate:desc.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "pagination[page]",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "default": 1
+            }
+          },
+          {
+            "name": "pagination[pageSize]",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100,
+              "default": 25
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StrapiListResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Login required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Insufficient permission or membership level",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/membership-plans": {
+      "get": {
+        "tags": [
+          "Account"
+        ],
+        "summary": "List membership plans",
+        "description": "VIP and SVIP features and platform product identifiers.",
+        "operationId": "listAccount",
+        "security": [],
+        "parameters": [
+          {
+            "name": "locale",
+            "in": "query",
+            "description": "Content language.",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "en",
+                "zh"
+              ],
+              "default": "en"
+            }
+          },
+          {
+            "name": "populate",
+            "in": "query",
+            "description": "Relations and media to include. Example: cover,category or *.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "filters",
+            "in": "query",
+            "description": "Strapi filter expression, for example filters[enabled][$eq]=true.",
+            "schema": {
+              "type": "object"
+            }
+          },
+          {
+            "name": "sort",
+            "in": "query",
+            "description": "Sort expression, for example publishDate:desc.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "pagination[page]",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "default": 1
+            }
+          },
+          {
+            "name": "pagination[pageSize]",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100,
+              "default": 25
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StrapiListResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Login required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Insufficient permission or membership level",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/testimonials": {
+      "get": {
+        "tags": [
+          "Marketing"
+        ],
+        "summary": "List published testimonials",
+        "description": "Published learner stories and ratings.",
+        "operationId": "listMarketing",
+        "security": [],
+        "parameters": [
+          {
+            "name": "locale",
+            "in": "query",
+            "description": "Content language.",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "en",
+                "zh"
+              ],
+              "default": "en"
+            }
+          },
+          {
+            "name": "populate",
+            "in": "query",
+            "description": "Relations and media to include. Example: cover,category or *.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "filters",
+            "in": "query",
+            "description": "Strapi filter expression, for example filters[enabled][$eq]=true.",
+            "schema": {
+              "type": "object"
+            }
+          },
+          {
+            "name": "sort",
+            "in": "query",
+            "description": "Sort expression, for example publishDate:desc.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "pagination[page]",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "default": 1
+            }
+          },
+          {
+            "name": "pagination[pageSize]",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100,
+              "default": 25
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StrapiListResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Login required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Insufficient permission or membership level",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/daily-progresses/me": {
+      "get": {
+        "tags": [
+          "Daily challenge"
+        ],
+        "summary": "Get my synced challenge progress",
+        "operationId": "getMyDailyProgress",
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DailyProgressResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Login required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Insufficient permission or membership level",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/daily-progresses": {
+      "post": {
+        "tags": [
+          "Daily challenge"
+        ],
+        "summary": "Complete a challenge day",
+        "description": "Idempotent per member and day. Completing day 7 grants the unified trial lesson reward if it has not already been issued.",
+        "operationId": "completeDailyChallengeDay",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DailyProgressRequest"
+              },
+              "example": {
+                "data": {
+                  "dayNumber": 1,
+                  "completedAt": "2026-08-22T08:00:00.000Z",
+                  "streak": 1,
+                  "platform": "ios"
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DailyProgressResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Login required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Insufficient permission or membership level",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/account/overview": {
+      "get": {
+        "tags": [
+          "Account"
+        ],
+        "summary": "Get the complete member account overview",
+        "description": "Returns subscriptions, orders, enrolled courses, learning progress, remaining lesson hours, bookings, and referral rewards in one request.",
+        "operationId": "getAccountOverview",
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AccountOverview"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Login required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Insufficient permission or membership level",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/lesson-bookings/me": {
+      "get": {
+        "tags": [
+          "Lesson booking"
+        ],
+        "summary": "List my lesson bookings",
+        "operationId": "listMyLessonBookings",
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/LessonBooking"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Login required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Insufficient permission or membership level",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/lesson-bookings": {
+      "post": {
+        "tags": [
+          "Lesson booking"
+        ],
+        "summary": "Request a lesson time",
+        "description": "Creates a requested booking. A staff member confirms it before the lesson credit is reserved.",
+        "operationId": "requestLessonBooking",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LessonBookingRequest"
+              },
+              "example": {
+                "data": {
+                  "courseSlug": "online-course",
+                  "requestedStartAt": "2026-08-25T10:00:00.000Z",
+                  "timezone": "Asia/Shanghai",
+                  "source": "ios",
+                  "notes": ""
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/LessonBooking"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Login required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Insufficient permission or membership level",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/lesson-bookings/{id}/cancel": {
+      "post": {
+        "tags": [
+          "Lesson booking"
+        ],
+        "summary": "Cancel my requested or confirmed lesson",
+        "operationId": "cancelMyLessonBooking",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/LessonBooking"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Login required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Insufficient permission or membership level",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/lesson-bookings/{id}/complete": {
+      "post": {
+        "tags": [
+          "Lesson booking"
+        ],
+        "summary": "Mark an assigned lesson completed",
+        "description": "Teacher-only action. The booking must be confirmed; completion consumes its reserved lesson credit.",
+        "operationId": "completeAssignedLesson",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/LessonBooking"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Login required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Insufficient permission or membership level",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/inquiries": {
+      "post": {
+        "tags": [
+          "Marketing"
+        ],
+        "summary": "Submit a consultation or level-test lead",
+        "description": "Public lead collection endpoint shared by the website, app, Android, iOS, and mini program.",
+        "operationId": "submitInquiry",
+        "security": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/InquiryRequest"
+              },
+              "example": {
+                "data": {
+                  "name": "Patty Willis",
+                  "email": "patty@example.com",
+                  "courseSlug": "not-sure",
+                  "learningGoal": "Speak confidently",
+                  "currentLevel": "beginner",
+                  "timezone": "America/New_York",
+                  "platform": "ios",
+                  "privacyConsent": true
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Lead recorded",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StrapiSingleResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Login required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Insufficient permission or membership level",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/testimonials/submit": {
+      "post": {
+        "tags": [
+          "Marketing"
+        ],
+        "summary": "Submit a testimonial",
+        "description": "VIP/SVIP only. New submissions are drafts and remain hidden until staff review.",
+        "operationId": "submitTestimonial",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TestimonialRequest"
+              },
+              "example": {
+                "quote": "My teacher made every lesson practical and enjoyable.",
+                "country": "United States",
+                "rating": 5
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Testimonial awaiting review",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StrapiSingleResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Login required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Insufficient permission or membership level",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/payments/paypal/orders": {
+      "post": {
+        "tags": [
+          "Payments"
+        ],
+        "summary": "Create a PayPal order",
+        "operationId": "createPayPalOrder",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PayPalOrderRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PayPalOrderResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Login required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Insufficient permission or membership level",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/payments/paypal/capture": {
+      "post": {
+        "tags": [
+          "Payments"
+        ],
+        "summary": "Capture an approved PayPal order",
+        "operationId": "capturePayPalOrder",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PayPalCaptureRequest"
+              },
+              "example": {
+                "paypalOrderId": "PAYPAL_ORDER_ID"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Login required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Insufficient permission or membership level",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/payments/paypal/subscriptions": {
+      "post": {
+        "tags": [
+          "Payments"
+        ],
+        "summary": "Create a PayPal membership subscription",
+        "operationId": "createPayPalSubscription",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PayPalSubscriptionRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Login required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Insufficient permission or membership level",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "tags": [
+    {
+      "name": "Authentication",
+      "description": "Registration, password login, password recovery, and social login."
+    },
+    {
+      "name": "App configuration",
+      "description": "Homepage, global settings, banners, and supported app versions."
+    },
+    {
+      "name": "Courses",
+      "description": "Course catalogue and public course detail content."
+    },
+    {
+      "name": "Knowledge",
+      "description": "Articles, categories, announcements, FAQ, and static content."
+    },
+    {
+      "name": "Daily challenge",
+      "description": "Seven-day speaking challenge content, progress sync, and reward state."
+    },
+    {
+      "name": "Account",
+      "description": "Current member profile, membership, lesson hours, referrals, orders, and progress."
+    },
+    {
+      "name": "Lesson booking",
+      "description": "Student booking lifecycle and teacher completion."
+    },
+    {
+      "name": "Marketing",
+      "description": "Consultation leads, newsletter subscriptions, and student testimonials."
+    },
+    {
+      "name": "Payments",
+      "description": "Authenticated PayPal order and subscription flows."
+    }
+  ]
+}

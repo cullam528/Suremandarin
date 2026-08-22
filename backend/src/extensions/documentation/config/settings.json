@@ -1,0 +1,46 @@
+{
+  "openapi": "3.0.0",
+  "info": {
+    "version": "1.0.0",
+    "title": "SureMandarin App API",
+    "description": "Official REST API contract for the SureMandarin website, iOS app, Android app, and mini program. Public content endpoints do not require a token. Member endpoints require Authorization: Bearer <JWT>.",
+    "termsOfService": "https://www.suremandarin.com/en/terms",
+    "contact": {
+      "name": "SureMandarin Technical Support",
+      "email": "hello@suremandarin.com",
+      "url": "https://www.suremandarin.com/en/contact"
+    }
+  },
+  "x-strapi-config": {
+    "plugins": []
+  },
+  "servers": [
+    {
+      "url": "https://api.suremandarin.com/api",
+      "description": "Production"
+    },
+    {
+      "url": "http://localhost:1337/api",
+      "description": "Local development"
+    }
+  ],
+  "externalDocs": {
+    "description": "SureMandarin website",
+    "url": "https://www.suremandarin.com"
+  },
+  "security": [
+    {
+      "bearerAuth": []
+    }
+  ],
+  "components": {
+    "securitySchemes": {
+      "bearerAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "JWT",
+        "description": "JWT returned by a successful login or registration. Send it as: Authorization: Bearer <JWT>."
+      }
+    }
+  }
+}
