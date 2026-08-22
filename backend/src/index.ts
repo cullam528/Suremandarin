@@ -6,7 +6,6 @@ import {
   syncAllLessonHoursBalances,
   validateLessonHoursTarget,
 } from './api/lesson-credit/services/balance';
-import { verifyAppleIdentityToken } from './api/apple-auth/services/apple-auth';
 
 const courses = [
   ['Private Course','private'], ['Group Course','group'], ['Learn & Travel Course','learn-travel'],
@@ -1034,9 +1033,11 @@ async function configureSocialProviders(strapi: Core.Strapi) {
   const callbackBase = process.env.FRONTEND_URL ?? 'http://localhost:3010';
   const providers = [
     ['google', process.env.GOOGLE_CLIENT_ID, process.env.GOOGLE_CLIENT_SECRET, ['openid', 'email', 'profile']],
+    ['facebook', process.env.FACEBOOK_APP_ID, process.env.FACEBOOK_APP_SECRET, ['email']],
     ['twitter', process.env.X_CONSUMER_KEY, process.env.X_CONSUMER_SECRET, undefined],
   ] as const;
   delete grant.linkedin;
+  delete grant.apple;
   for (const [name, key, secret, scope] of providers) {
     if (!key || !secret) continue;
     grant[name] = { enabled: true, key, secret, callback: `${callbackBase}/api/auth/oauth/callback/${name}`, ...(scope ? { scope } : {}) };
@@ -1086,32 +1087,6 @@ async function configureSocialProviders(strapi: Core.Strapi) {
     });
   }
 
-  if (process.env.APPLE_CLIENT_ID && process.env.APPLE_TEAM_ID && process.env.APPLE_KEY_ID && process.env.APPLE_PRIVATE_KEY) {
-    const registry = strapi.plugin('users-permissions').service('providers-registry') as {
-      add: (name: string, config: Record<string, unknown>) => void;
-    };
-    registry.add('apple', {
-      enabled: true,
-      icon: 'apple',
-      grantConfig: {},
-      authCallback: async ({ accessToken, query }: {
-        accessToken: string;
-        query?: Record<string, unknown>;
-      }) => {
-        const identity = await verifyAppleIdentityToken(accessToken, String(query?.nonce ?? ''));
-        const requestedName = String(query?.fullName ?? '').trim();
-        const fullName = requestedName || identity.email.split('@')[0];
-        return {
-          username: fullName,
-          email: identity.email,
-          fullName,
-          displayName: fullName,
-          registrationSource: 'apple',
-          registrationPlatform: 'web',
-        };
-      },
-    });
-  }
 }
 
 async function configurePasswordResetEmail(strapi: Core.Strapi) {

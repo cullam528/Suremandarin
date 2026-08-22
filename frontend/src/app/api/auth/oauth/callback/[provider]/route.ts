@@ -2,10 +2,9 @@ import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import { setAuthCookie, STRAPI_URL } from "@/lib/auth";
 
-const supported = new Set(["google", "apple", "twitter"]);
+const supported = new Set(["google", "facebook", "twitter"]);
 
 const OAUTH_CONTEXT_COOKIE = "suremandarin_oauth_context";
-const APPLE_FLOW_COOKIE = "suremandarin_apple_flow";
 
 type OAuthContext = {
   locale: "en" | "zh";
@@ -14,8 +13,6 @@ type OAuthContext = {
   refName?: string;
   source?: string;
 };
-
-type AppleFlow = { state: string; nonce: string };
 
 type AuthResult = {
   jwt?: string;
@@ -47,18 +44,6 @@ function authPageUrl(origin: string, context: OAuthContext, reason: string) {
   return target;
 }
 
-function readAppleFlow(value?: string): AppleFlow | null {
-  if (!value) return null;
-  try {
-    const parsed = JSON.parse(Buffer.from(value, "base64url").toString("utf8")) as Partial<AppleFlow>;
-    if (typeof parsed.state !== "string" || typeof parsed.nonce !== "string") return null;
-    if (parsed.state.length < 20 || parsed.nonce.length < 20) return null;
-    return { state: parsed.state, nonce: parsed.nonce };
-  } catch {
-    return null;
-  }
-}
-
 function failureReason(result: AuthResult | null) {
   const message = result?.error?.message?.toLowerCase() ?? "";
   return message.includes("email was not available") || message.includes("did not return an email")
@@ -66,22 +51,6 @@ function failureReason(result: AuthResult | null) {
     : message.includes("email is already taken")
       ? "account_exists"
       : "failed";
-}
-
-function appleFullName(rawUser: FormDataEntryValue | null) {
-  if (typeof rawUser !== "string" || !rawUser) return "";
-  try {
-    const user = JSON.parse(rawUser) as {
-      name?: { firstName?: string; lastName?: string };
-    };
-    return [user.name?.firstName, user.name?.lastName]
-      .filter((value): value is string => typeof value === "string" && Boolean(value.trim()))
-      .join(" ")
-      .trim()
-      .slice(0, 160);
-  } catch {
-    return "";
-  }
 }
 
 export async function GET(
@@ -115,56 +84,5 @@ export async function GET(
     return NextResponse.redirect(new URL(`/${context.locale}/account/profile`, url.origin));
   } catch {
     return NextResponse.redirect(authPageUrl(url.origin, context, "failed"));
-  }
-}
-
-export async function POST(
-  request: Request,
-  { params }: { params: Promise<{ provider: string }> },
-) {
-  const { provider } = await params;
-  const url = new URL(request.url);
-  const cookieStore = await cookies();
-  const context = readOAuthContext(cookieStore.get(OAUTH_CONTEXT_COOKIE)?.value);
-  const flow = readAppleFlow(cookieStore.get(APPLE_FLOW_COOKIE)?.value);
-  cookieStore.delete(OAUTH_CONTEXT_COOKIE);
-  cookieStore.delete(APPLE_FLOW_COOKIE);
-  if (provider !== "apple") {
-    return NextResponse.redirect(authPageUrl(url.origin, context, "unsupported"), 303);
-  }
-
-  try {
-    const form = await request.formData();
-    const error = String(form.get("error") ?? "");
-    if (error) {
-      return NextResponse.redirect(
-        authPageUrl(url.origin, context, error === "user_cancelled_authorize" ? "cancelled" : "failed"),
-        303,
-      );
-    }
-    const state = String(form.get("state") ?? "");
-    const code = String(form.get("code") ?? "");
-    if (!flow || state !== flow.state || !code) {
-      return NextResponse.redirect(authPageUrl(url.origin, context, "failed"), 303);
-    }
-
-    const response = await fetch(`${STRAPI_URL}/api/apple-auth/exchange`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json", Accept: "application/json" },
-      body: JSON.stringify({
-        code,
-        nonce: flow.nonce,
-        fullName: appleFullName(form.get("user")),
-      }),
-      cache: "no-store",
-    });
-    const result = await response.json().catch(() => null) as AuthResult | null;
-    if (!response.ok || !result?.jwt) {
-      return NextResponse.redirect(authPageUrl(url.origin, context, failureReason(result)), 303);
-    }
-    await setAuthCookie(result.jwt);
-    return NextResponse.redirect(new URL(`/${context.locale}/account/profile`, url.origin), 303);
-  } catch {
-    return NextResponse.redirect(authPageUrl(url.origin, context, "failed"), 303);
   }
 }
