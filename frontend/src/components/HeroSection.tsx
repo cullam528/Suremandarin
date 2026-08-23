@@ -96,7 +96,7 @@ export function HeroSection({
           </form>
           <Link
             href={`/${locale}/level-test`}
-            className="group mt-4 flex w-full max-w-2xl items-center justify-between gap-4 rounded-2xl border border-brand-blue/40 brand-gradient p-3.5 text-white shadow-lg shadow-blue-900/15 transition hover:-translate-y-0.5 hover:shadow-xl hover:shadow-blue-900/20 sm:w-fit sm:min-w-[340px]"
+            className="group mt-4 hidden w-full max-w-2xl items-center justify-between gap-4 rounded-2xl border border-brand-blue/40 brand-gradient p-3.5 text-white shadow-lg shadow-blue-900/15 transition hover:-translate-y-0.5 hover:shadow-xl hover:shadow-blue-900/20 sm:w-fit sm:min-w-[340px] md:flex"
           >
             <span className="flex min-w-0 items-center gap-3 text-left">
               <span className="grid size-11 shrink-0 place-items-center rounded-xl bg-white/15 text-white ring-1 ring-white/30">
@@ -115,7 +115,7 @@ export function HeroSection({
               <ArrowRight size={17} />
             </span>
           </Link>
-          <div className="mt-3 flex max-w-2xl flex-wrap gap-2">
+          <div className="mt-3 hidden max-w-2xl flex-wrap gap-2 md:flex">
             <span className="inline-flex items-center gap-2 rounded-full border border-brand-line bg-white/90 px-3.5 py-2 text-xs font-bold text-brand-navy shadow-sm shadow-blue-900/5">
               <BadgeCheck size={15} className="text-brand-green" />
               <span>{locale === "zh" ? "免费咨询" : "Free consultation"}</span>
