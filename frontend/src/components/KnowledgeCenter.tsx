@@ -50,8 +50,16 @@ export function KnowledgeCenter({
                   />
                 </div>
                 <div className="p-6">
-                  <Icon className="mb-4 text-brand-blue" />
-                  <h3 className="font-bold text-brand-navy">{article.title}</h3>
+                  <div className="flex items-center gap-3">
+                    <Icon
+                      aria-hidden="true"
+                      className="shrink-0 text-brand-blue"
+                      size={22}
+                    />
+                    <h3 className="font-bold leading-tight text-brand-navy">
+                      {article.title}
+                    </h3>
+                  </div>
                   <p className="mt-2 text-sm leading-6 text-slate-500">
                     {article.excerpt}
                   </p>
