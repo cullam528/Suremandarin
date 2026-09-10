@@ -1,6 +1,7 @@
 "use client";
 
 import Image from "next/image";
+import Link from "next/link";
 import {
   ArrowRight,
   BookOpen,
@@ -192,11 +193,10 @@ export function CourseDetail({
                 </div>
               ))}
             </dl>
-            <p className="mt-6 text-sm font-bold text-brand-navy">
-              <span className="text-brand-orange">★★★★★</span> &nbsp;
-              {page.rating} &nbsp;{" "}
-              <span className="text-brand-green">★ Trustpilot</span>
-            </p>
+            <Link href={`/${locale}/theysay`} className="mt-6 inline-flex items-center gap-2 text-sm font-bold text-brand-blue hover:underline">
+              {zh ? "阅读学员学习体验" : "Read our students’ learning experiences"}
+              <ArrowRight size={16} aria-hidden="true" />
+            </Link>
           </div>
           <div className="relative lg:pl-10">
             <div className="mx-auto w-full max-w-[520px] rounded-[2rem] border border-brand-line bg-white p-5 shadow-2xl sm:p-7">

@@ -1,5 +1,7 @@
 # SureMandarin Google SEO 上线设置
 
+完整的 Google、Bing、AI 搜索、文章编辑和验收流程请参考 [SEO / GEO 运营手册](../docs/seo-operations.md)。
+
 代码已经自动生成标题、描述、规范链接、双语 `hreflang`、结构化数据、`robots.txt` 和 `sitemap.xml`。下面两步需要网站所有者在 Google 与 Vercel 后台完成。
 
 ## 1. 验证 Google Search Console

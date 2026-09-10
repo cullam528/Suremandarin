@@ -11,9 +11,11 @@ import { LanguageSwitcher } from "@/components/LanguageSwitcher";
 
 export function Header({
   locale = "en",
+  languageUrls,
 }: {
   settings: GlobalData;
   locale?: Locale;
+  languageUrls?: Partial<Record<Locale, string>>;
 }) {
   const [open, setOpen] = useState(false);
   const [user, setUser] = useState<{
@@ -125,7 +127,7 @@ export function Header({
               </a>
             </>
           )}
-          <LanguageSwitcher locale={locale} />
+          <LanguageSwitcher locale={locale} languageUrls={languageUrls} />
         </div>
         <button
           type="button"

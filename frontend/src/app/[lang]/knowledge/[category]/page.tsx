@@ -38,7 +38,7 @@ export default async function KnowledgeCategoryPage({
   const { lang, category } = await params;
   if (!isLocale(lang) || !(category in knowledgeCategories)) notFound();
   const categorySlug = category as KnowledgeCategorySlug;
-  const articles = await getKnowledgeArticles(categorySlug, lang);
+  const articles = (await getKnowledgeArticles(categorySlug, lang)).filter((article) => !article.isSample);
   return (
     <SiteShell locale={lang}>
       <StructuredData

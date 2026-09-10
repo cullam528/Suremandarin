@@ -9,8 +9,9 @@ import { KnowledgeCenter } from "@/components/KnowledgeCenter";
 import { Newsletter } from "@/components/Newsletter";
 import { SiteStructuredData } from "@/components/seo/StructuredData";
 import { Testimonials } from "@/components/Testimonials";
-import { isLocale } from "@/lib/i18n";
-import { pageMetadata } from "@/lib/seo";
+import { isLocale, locales } from "@/lib/i18n";
+import { languagePaths } from "@/lib/content-seo";
+import { pageMetadata, seoCopy } from "@/lib/seo";
 import { getHomepageData } from "@/lib/strapi";
 export async function generateStaticParams() {
   return [{ lang: "en" }, { lang: "zh" }];
@@ -22,13 +23,16 @@ export async function generateMetadata({
 }): Promise<Metadata> {
   const { lang } = await params;
   if (!isLocale(lang)) return {};
-  const d = await getHomepageData(lang);
+  const homes = await Promise.all(locales.map((locale) => getHomepageData(locale)));
+  const d = homes[locales.indexOf(lang)];
   return pageMetadata({
     locale: lang,
-    title: d.pageTitle,
-    description: d.pageDescription,
+    title: ["SureMandarin Chinese Learning", "SureMandarin 中文学习"].includes(d.pageTitle) ? seoCopy[lang].title : d.pageTitle,
+    description: ["Personalized Chinese learning for students worldwide.", "面向全球学习者的个性化中文课程。"].includes(d.pageDescription) ? seoCopy[lang].description : d.pageDescription,
     path: "",
     image: d.slides[0]?.image,
+    seo: d.seo,
+    languageAlternates: languagePaths(locales.filter((_, index) => homes[index].seo?.noIndex !== true).map((locale) => ({ locale, path: `/${locale}` }))),
   });
 }
 export default async function LocalizedHome({

@@ -4,6 +4,7 @@ import { ArrowRight, CheckCircle2, SlidersHorizontal } from "lucide-react";
 import type { CourseData } from "@/lib/strapi";
 import type { Locale } from "@/lib/i18n";
 import { CourseConsultation } from "@/components/site/CourseConsultation";
+import { LearningGuide } from "@/components/seo/LearningGuide";
 
 export function CourseCatalog({
   courses,
@@ -85,6 +86,7 @@ export function CourseCatalog({
             </article>
           ))}
         </div>
+        <LearningGuide courses={courses} locale={locale} />
         <CourseConsultation courses={courses} locale={locale} />
       </div>
     </section>

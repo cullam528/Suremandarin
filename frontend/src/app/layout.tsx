@@ -3,7 +3,9 @@ import Image from "next/image";
 import { Plus_Jakarta_Sans } from "next/font/google";
 import {
   absoluteUrl,
+  bingSiteVerification,
   googleSiteVerification,
+  indexingAllowed,
   seoCopy,
   siteName,
   siteUrl,
@@ -58,8 +60,6 @@ export const metadata: Metadata = {
     images: [
       {
         url: absoluteUrl("/images/hero-global-learners.webp"),
-        width: 1200,
-        height: 675,
         alt: "SureMandarin Chinese learning",
       },
     ],
@@ -71,22 +71,23 @@ export const metadata: Metadata = {
     images: [absoluteUrl("/images/hero-global-learners.webp")],
   },
   robots: {
-    index: true,
-    follow: true,
+    index: indexingAllowed,
+    follow: indexingAllowed,
     "max-image-preview": "large",
     "max-snippet": -1,
     "max-video-preview": -1,
     googleBot: {
-      index: true,
-      follow: true,
+      index: indexingAllowed,
+      follow: indexingAllowed,
       "max-image-preview": "large",
       "max-snippet": -1,
       "max-video-preview": -1,
     },
   },
-  verification: googleSiteVerification
-    ? { google: googleSiteVerification }
-    : undefined,
+  verification: {
+    ...(googleSiteVerification ? { google: googleSiteVerification } : {}),
+    ...(bingSiteVerification ? { other: { "msvalidate.01": bingSiteVerification } } : {}),
+  },
 };
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
@@ -110,7 +111,7 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
               unoptimized
             />
             <p className="legacy-browser-brand">SureMandarin</p>
-            <h1 id="legacy-browser-title">您的浏览器版本过旧</h1>
+            <h2 id="legacy-browser-title">您的浏览器版本过旧</h2>
             <p>
               Internet Explorer 无法正常显示本网站。请使用 Microsoft Edge、
               Google Chrome、Safari 或 Firefox 打开。

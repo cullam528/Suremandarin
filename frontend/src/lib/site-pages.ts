@@ -1,0 +1,22 @@
+/** Public canonical routes shared by the human-readable and XML sitemaps. */
+export const publicPages = [
+  { path: "", en: "Home", zh: "首页" },
+  { path: "/courses", en: "Chinese courses", zh: "中文课程" },
+  { path: "/knowledge", en: "Chinese learning guides", zh: "中文学习知识中心" },
+  { path: "/about", en: "About SureMandarin", zh: "关于 SureMandarin" },
+  { path: "/teachers", en: "Chinese teachers", zh: "中文教师" },
+  { path: "/contact", en: "Free learning consultation", zh: "免费学习咨询" },
+  { path: "/faq", en: "Frequently asked questions", zh: "常见问题" },
+  { path: "/pricing", en: "Membership options", zh: "会员方案" },
+  { path: "/resources", en: "Learning resources", zh: "学习资源" },
+  { path: "/app", en: "Learning on your phone", zh: "移动端学习" },
+  { path: "/referral", en: "Referral program", zh: "推荐计划" },
+  { path: "/theysay", en: "Student experiences", zh: "学员评价" },
+  { path: "/announcements", en: "Announcements", zh: "公告" },
+  { path: "/level-test", en: "Free Chinese level test", zh: "免费中文水平测试" },
+  { path: "/daily", en: "7-day Chinese speaking challenge", zh: "7 天中文口语挑战" },
+  { path: "/privacy", en: "Privacy policy", zh: "隐私政策" },
+  { path: "/terms", en: "Terms of use", zh: "使用条款" },
+  { path: "/cookies", en: "Cookie policy", zh: "Cookie 政策" },
+  { path: "/site-map", en: "Site map", zh: "网站地图" },
+] as const;

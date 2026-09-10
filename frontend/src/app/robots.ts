@@ -1,36 +1,19 @@
 import type { MetadataRoute } from "next";
-import { absoluteUrl } from "@/lib/seo";
+import { absoluteUrl, indexingAllowed } from "@/lib/seo";
 
 export default function robots(): MetadataRoute.Robots {
+  if (!indexingAllowed) {
+    return { rules: [{ userAgent: "*", disallow: "/" }] };
+  }
+
   return {
     rules: [
       {
         userAgent: "*",
         allow: "/",
-        disallow: [
-          "/api/",
-          "/account",
-          "/login",
-          "/register",
-          "/forgot-password",
-          "/reset-password",
-          "/en/account",
-          "/zh/account",
-          "/en/login",
-          "/zh/login",
-          "/en/register",
-          "/zh/register",
-          "/en/forgot-password",
-          "/zh/forgot-password",
-          "/en/reset-password",
-          "/zh/reset-password",
-          "/en/checkout",
-          "/zh/checkout",
-          "/en/payment/",
-          "/zh/payment/",
-          "/en/inquiry/success",
-          "/zh/inquiry/success",
-        ],
+        // Authentication/account pages must be crawlable for their noindex
+        // metadata and X-Robots-Tag responses to be seen. APIs are not pages.
+        disallow: ["/api/"],
       },
     ],
     sitemap: absoluteUrl("/sitemap.xml"),

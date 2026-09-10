@@ -23,6 +23,7 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import type { Locale } from "@/lib/i18n";
+import { getLearningFaqs } from "@/lib/learning-guide";
 
 type MarketingKind =
   | "about"
@@ -1179,52 +1180,11 @@ function TeachersPageContent({ locale }: { locale: Locale }) {
   );
 }
 
-export function getFaqItems(locale: Locale): Array<[string, string]> {
-  const zh = locale === "zh";
-  return zh
-    ? [
-        [
-          "我应该选择哪种课程？",
-          "可以根据学习目标、时间安排、中文水平和预算选择。学习顾问也可以帮助你判断。",
-        ],
-        [
-          "没有中文基础可以报名吗？",
-          "可以。我们会从你的实际水平开始设计学习路径。",
-        ],
-        [
-          "可以调整上课时间吗？",
-          "请提前联系学习顾问，我们会根据教师和课程安排协助调整。",
-        ],
-        [
-          "会员和课程是同一件事吗？",
-          "会员主要提供内容和服务权益，具体课程报名以课程页面和订单说明为准。",
-        ],
-      ]
-    : [
-        [
-          "Which course should I choose?",
-          "Choose around your goals, schedule, current level, and budget. A learning advisor can also guide you.",
-        ],
-        [
-          "Can complete beginners join?",
-          "Yes. We start from your current level and create a practical learning path.",
-        ],
-        [
-          "Can I change my lesson time?",
-          "Contact your learning advisor in advance and we will help where the teacher schedule allows.",
-        ],
-        [
-          "Are membership and courses the same thing?",
-          "Membership provides content and service benefits. Course enrolment follows the course page and order details.",
-        ],
-      ];
-}
-
 export function FaqContent({ locale }: { locale: Locale }) {
-  const items = getFaqItems(locale);
+  const items = getLearningFaqs(locale);
   const zh = locale === "zh";
   return (
-    <section className="soft-gradient py-16 sm:py-24">
+    <section id="faq" className="soft-gradient py-16 sm:py-24">
       <div className="page-shell max-w-4xl">
         <p className="section-kicker">{zh ? "常见问题" : "FAQ"}</p>
         <h1 className="mt-4 text-4xl font-extrabold text-brand-navy sm:text-6xl">
@@ -1232,14 +1192,27 @@ export function FaqContent({ locale }: { locale: Locale }) {
             ? "开始学习前，先了解这些"
             : "Before you begin, find your answers"}
         </h1>
+        <p className="mt-5 max-w-3xl text-base leading-8 text-slate-600">
+          {zh
+            ? "从零基础、选课和跨时区上课，到费用、预约与会员权益，了解开始中文学习前需要确认的事情。"
+            : "Answers about starting from zero, choosing a course, learning across time zones, lesson costs, bookings and membership."}
+        </p>
         <div className="mt-10 grid gap-4">
-          {items.map(([q, a]) => (
-            <article key={q} className="rounded-2xl bg-white p-6 shadow-sm">
-              <h2 className="font-extrabold text-brand-navy">{q}</h2>
-              <p className="mt-3 text-sm leading-7 text-slate-600">{a}</p>
+          {items.map(({ id, question, answer, link }) => (
+            <article id={id} key={id} className="scroll-mt-28 rounded-2xl bg-white p-6 shadow-sm">
+              <h2 className="text-lg font-extrabold text-brand-navy">{question}</h2>
+              <p className="mt-3 text-sm leading-7 text-slate-600">{answer}</p>
+              <Link href={link.path} className="mt-4 inline-flex items-center gap-2 text-sm font-bold text-brand-blue hover:underline">
+                {link.label}
+                <ArrowRight size={15} aria-hidden="true" />
+              </Link>
             </article>
           ))}
         </div>
+        <Link href={`/${locale}/contact`} className="mt-8 inline-flex items-center gap-2 rounded-xl bg-brand-blue px-5 py-3 text-sm font-bold text-white hover:bg-blue-700">
+          {zh ? "还有问题？预约免费学习咨询" : "More questions? Book a free learning consultation"}
+          <ArrowRight size={17} aria-hidden="true" />
+        </Link>
       </div>
     </section>
   );

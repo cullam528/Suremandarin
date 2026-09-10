@@ -6,7 +6,8 @@ import { MarketingPage } from "@/components/site/MarketingPage";
 import { SiteShell } from "@/components/site/SiteShell";
 import { isLocale } from "@/lib/i18n";
 import { getHomepageData } from "@/lib/strapi";
-import { pageMetadata } from "@/lib/seo";
+import { absoluteUrl, breadcrumbStructuredData, pageMetadata } from "@/lib/seo";
+import { StructuredData } from "@/components/seo/StructuredData";
 export async function generateMetadata({ params }: { params: Promise<{ lang: string }> }): Promise<Metadata> {
   const { lang } = await params;
   return isLocale(lang) ? pageMetadata({
@@ -26,6 +27,10 @@ export default async function ContactPage({
   const data = await getHomepageData(lang);
   return (
     <SiteShell locale={lang}>
+      <StructuredData data={[
+        { "@context": "https://schema.org", "@type": "ContactPage", "@id": `${absoluteUrl(`/${lang}/contact`)}#page`, url: absoluteUrl(`/${lang}/contact`), name: lang === "zh" ? "咨询 SureMandarin 中文课程" : "Contact SureMandarin", inLanguage: lang === "zh" ? "zh-CN" : "en", mainEntity: { "@id": absoluteUrl("/#organization") }, isPartOf: { "@id": absoluteUrl("/#website") } },
+        breadcrumbStructuredData([{ name: lang === "zh" ? "首页" : "Home", path: `/${lang}` }, { name: lang === "zh" ? "联系我们" : "Contact us", path: `/${lang}/contact` }]),
+      ]} />
       <MarketingPage kind="contact" locale={lang} />
       <div className="page-shell pb-16 sm:pb-24">
         <CourseConsultation
@@ -36,7 +41,7 @@ export default async function ContactPage({
           leadSource="contact-page"
         />
       </div>
-      <AppShowcase locale={lang} settings={data.global} />
+      <AppShowcase locale={lang} settings={data.global} headingLevel={2} />
     </SiteShell>
   );
 }

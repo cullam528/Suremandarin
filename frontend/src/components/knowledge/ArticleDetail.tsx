@@ -7,8 +7,10 @@ import { ArrowLeft, Clock3, UserRound } from "lucide-react";
 import type { ArticleDetailData, KnowledgeCategorySlug } from "@/lib/strapi";
 import { knowledgeCategories } from "@/lib/strapi";
 import type { Locale } from "@/lib/i18n";
+import { validContentDate } from "@/lib/content-seo";
 
 function blockText(value: unknown): string {
+  if (Array.isArray(value)) return value.map(blockText).join("");
   if (!value || typeof value !== "object") return "";
   const item = value as { text?: unknown; children?: unknown[]; content?: unknown };
   if (typeof item.text === "string") return item.text;
@@ -99,7 +101,7 @@ function renderBlockNoteBlock(block: ArticleBlock, index: number, locale: Locale
 
   switch (block.type) {
     case 'heading': {
-      const level = Math.min(Math.max(block.props?.level ?? 2, 1), 6);
+      const level = Math.min(Math.max(block.props?.level ?? 2, 2), 6);
       const Heading = (`h${level}`) as ElementType;
       return <Fragment key={key}><Heading style={style}>{inline}</Heading>{nested}</Fragment>;
     }
@@ -185,7 +187,7 @@ function renderBlock(block: ArticleBlock, index: number, locale: Locale): ReactN
     case 'heading-five': return <h6 key={key}>{children}</h6>;
     case 'heading-six': return <h6 key={key}>{children}</h6>;
     case 'heading': {
-      const level = Math.min(Math.max(block.level ?? 2, 1), 6);
+      const level = Math.min(Math.max(block.level ?? 2, 2), 6);
       const Heading = (`h${level}`) as ElementType;
       return <Heading key={key}>{children}</Heading>;
     }
@@ -258,12 +260,20 @@ export function ArticleDetail({
   article,
   category,
   locale,
+  relatedArticles = [],
+  translations = [],
 }: {
   article: ArticleDetailData;
   category: KnowledgeCategorySlug;
   locale: Locale;
+  relatedArticles?: ArticleDetailData[];
+  translations?: Array<{ locale: Locale; path: string }>;
 }) {
   const categoryCopy = knowledgeCategories[category][locale];
+  const updatedDate = validContentDate(article.updatedAt);
+  const publishedDate = validContentDate(article.publishDate);
+  const displayDate = updatedDate || publishedDate;
+  const formattedDate = displayDate ? new Intl.DateTimeFormat(locale === "zh" ? "zh-CN" : "en", { year: "numeric", month: "long", day: "numeric", timeZone: "UTC" }).format(new Date(displayDate)) : "";
   const markdownBody = typeof article.body === "string" ? article.body.trim() : "";
   const blocks: ArticleBlock[] = Array.isArray(article.body)
     ? article.body.filter((item) => {
@@ -310,7 +320,11 @@ export function ArticleDetail({
                 {article.readingMinutes}{" "}
                 {locale === "zh" ? "分钟阅读" : "min read"}
               </span>
+              {displayDate && <span>{updatedDate ? (locale === "zh" ? "更新于 " : "Updated ") : (locale === "zh" ? "发布于 " : "Published ")}<time dateTime={displayDate}>{formattedDate}</time></span>}
             </div>
+            {translations.some((item) => item.locale !== locale) && <nav aria-label={locale === "zh" ? "文章语言版本" : "Article languages"} className="mt-4 flex gap-4 text-sm font-semibold text-brand-blue">
+              {translations.filter((item) => item.locale !== locale).map((item) => <Link key={item.locale} href={item.path} hrefLang={item.locale === "zh" ? "zh-Hans" : "en"}>{item.locale === "zh" ? "阅读中文版本" : "Read in English"}</Link>)}
+            </nav>}
             <p className="mt-8 border-l-4 border-brand-cyan pl-5 text-lg font-semibold leading-8 text-brand-navy">
               {article.excerpt}
             </p>
@@ -319,6 +333,7 @@ export function ArticleDetail({
                 <ReactMarkdown
                   remarkPlugins={[remarkGfm]}
                   components={{
+                    h1: ({ children }) => <h2>{children}</h2>,
                     a: ({ href, children }) => {
                       const video = href ? getVideoEmbed(href) : null;
                       if (video?.kind === "file") {
@@ -379,12 +394,21 @@ export function ArticleDetail({
                   : "Book a free consultation and get a learning plan designed around your goals."}
               </p>
               <Link
-                href={`/${locale}/#signup`}
+                href={`/${locale}/contact#consultation`}
                 className="brand-gradient mt-6 inline-flex rounded-xl px-6 py-3 font-extrabold text-white"
               >
                 {locale === "zh" ? "预约免费咨询" : "Book a free consultation"}
               </Link>
             </div>
+            {relatedArticles.length > 0 && <section className="mt-12 border-t border-brand-line pt-8" aria-labelledby="related-reading">
+              <h2 id="related-reading" className="text-2xl font-extrabold text-brand-navy">{locale === "zh" ? "继续阅读" : "Continue learning"}</h2>
+              <ul className="mt-5 grid gap-5 sm:grid-cols-3">
+                {relatedArticles.map((related) => <li key={related.slug}>
+                  <Link className="font-bold text-brand-blue hover:underline" href={`/${locale}/knowledge/${category}/${related.slug}`}>{related.title}</Link>
+                  <p className="mt-2 text-sm leading-6 text-slate-600">{related.excerpt}</p>
+                </li>)}
+              </ul>
+            </section>}
           </div>
         </div>
       </article>

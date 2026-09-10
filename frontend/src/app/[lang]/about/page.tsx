@@ -3,7 +3,8 @@ import { notFound } from "next/navigation";
 import { MarketingPage } from "@/components/site/MarketingPage";
 import { SiteShell } from "@/components/site/SiteShell";
 import { isLocale } from "@/lib/i18n";
-import { pageMetadata } from "@/lib/seo";
+import { absoluteUrl, breadcrumbStructuredData, pageMetadata } from "@/lib/seo";
+import { StructuredData } from "@/components/seo/StructuredData";
 export async function generateMetadata({ params }: { params: Promise<{ lang: string }> }): Promise<Metadata> {
   const { lang } = await params;
   return isLocale(lang) ? pageMetadata({
@@ -22,6 +23,10 @@ export default async function AboutPage({
   if (!isLocale(lang)) notFound();
   return (
     <SiteShell locale={lang}>
+      <StructuredData data={[
+        { "@context": "https://schema.org", "@type": "AboutPage", "@id": `${absoluteUrl(`/${lang}/about`)}#page`, url: absoluteUrl(`/${lang}/about`), name: lang === "zh" ? "关于 SureMandarin" : "About SureMandarin", inLanguage: lang === "zh" ? "zh-CN" : "en", mainEntity: { "@id": absoluteUrl("/#organization") }, isPartOf: { "@id": absoluteUrl("/#website") }, about: { "@type": "Person", name: "Jessica", jobTitle: "Founder", image: absoluteUrl("/course-detail/images/leader-Jessica.webp"), worksFor: { "@id": absoluteUrl("/#organization") } } },
+        breadcrumbStructuredData([{ name: lang === "zh" ? "首页" : "Home", path: `/${lang}` }, { name: lang === "zh" ? "关于我们" : "About us", path: `/${lang}/about` }]),
+      ]} />
       <MarketingPage kind="about" locale={lang} />
     </SiteShell>
   );

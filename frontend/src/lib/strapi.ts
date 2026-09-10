@@ -1,5 +1,7 @@
 import { cache } from "react";
 import { localizeHomepage, type Locale } from "@/lib/i18n";
+import { contentText, type ContentSeo } from "@/lib/content-seo";
+import { editorialGuides } from "@/lib/editorial-guides";
 
 const configuredStrapiUrl = process.env.NEXT_PUBLIC_STRAPI_URL ?? process.env.STRAPI_URL;
 const STRAPI_URL = (
@@ -32,6 +34,8 @@ export type CourseData = {
   summary: string;
   image: string;
   imageAlt: string;
+  seo?: ContentSeo;
+  updatedAt?: string;
 };
 
 export type ArticleData = {
@@ -41,6 +45,7 @@ export type ArticleData = {
   excerpt: string;
   image: string;
   imageAlt: string;
+  seo?: ContentSeo;
 };
 
 export type ArticleDetailData = ArticleData & {
@@ -50,6 +55,9 @@ export type ArticleDetailData = ArticleData & {
   updatedAt?: string;
   readingMinutes: number;
   categoryName: string;
+  categorySlug?: KnowledgeCategorySlug;
+  isSample?: boolean;
+  accessLevel?: string;
 };
 
 export type TestimonialData = {
@@ -85,6 +93,7 @@ export type GlobalData = {
 export type HomepageData = {
   pageTitle: string;
   pageDescription: string;
+  seo?: ContentSeo;
   slides: HeroSlideData[];
   courseSectionTitle: string;
   courses: CourseData[];
@@ -290,19 +299,25 @@ function fallbackKnowledgeBody(category: KnowledgeCategorySlug, locale: Locale, 
 }
 
 function getFallbackKnowledgeArticles(category: KnowledgeCategorySlug, locale: Locale): ArticleDetailData[] {
-  return fallbackKnowledgeTopics[category].map((topic, index) => ({
+  return fallbackKnowledgeTopics[category].map((topic, index) => {
+    const guide = editorialGuides[topic.slug]?.[locale];
+    const body = guide?.body ?? fallbackKnowledgeBody(category, locale, topic, index);
+    return {
     id: `fallback-${category}-${index + 1}`,
     title: topic[locale].title,
     slug: topic.slug,
-    excerpt: topic[locale].excerpt,
+    excerpt: guide?.excerpt ?? topic[locale].excerpt,
     image: topic.image,
     imageAlt: `${topic[locale].title} — SureMandarin Knowledge Center`,
-    body: fallbackKnowledgeBody(category, locale, topic, index),
+    body,
     authorName: "SureMandarin Editorial Team",
-    publishDate: new Date(Date.UTC(2026, 0, 20 - index)).toISOString(),
-    readingMinutes: 4 + (index % 4),
+    publishDate: "",
+    readingMinutes: Math.max(1, Math.ceil(locale === "zh" ? contentText(body).length / 300 : contentText(body).split(/\s+/).length / 200)),
     categoryName: knowledgeCategories[category][locale].title,
-  }));
+    categorySlug: category,
+    isSample: !guide,
+    seo: { noIndex: !guide },
+  }; });
 }
 
 function mediaUrl(media: StrapiMedia, fallback?: string) {
@@ -312,7 +327,24 @@ function mediaUrl(media: StrapiMedia, fallback?: string) {
   return media.url;
 }
 
-async function request<T>(path: string): Promise<T> {
+function parseSeo(value: unknown): ContentSeo | undefined {
+  if (!value || typeof value !== "object") return undefined;
+  const seo = value as Record<string, unknown>;
+  return {
+    metaTitle: typeof seo.metaTitle === "string" ? seo.metaTitle.trim() || undefined : undefined,
+    metaDescription: typeof seo.metaDescription === "string" ? seo.metaDescription.trim() || undefined : undefined,
+    shareImage: mediaUrl(seo.shareImage as StrapiMedia),
+    noIndex: seo.noIndex === true,
+  };
+}
+
+function courseSummary(value: unknown, title: unknown, fallbackSummary: string) {
+  const summary = typeof value === "string" ? value.trim() : "";
+  return !summary || summary === `SureMandarin ${title}` || summary === String(title)
+    ? fallbackSummary : summary;
+}
+
+const request = cache(async function request<T>(path: string): Promise<T> {
   const response = await fetch(`${STRAPI_URL}${path}`, {
     next: { revalidate: 60, tags: ["strapi-homepage"] },
     headers: { Accept: "application/json" },
@@ -321,7 +353,33 @@ async function request<T>(path: string): Promise<T> {
   if (!response.ok)
     throw new Error(`Strapi request failed: ${response.status} ${path}`);
   return response.json() as Promise<T>;
-}
+});
+
+const getCourseRecords = cache(async (locale: Locale) => {
+  const response = await request<{ data: Array<Record<string, unknown>> }>(localizedPath(
+    "/api/courses?populate[cover]=true&populate[seo][populate]=shareImage&sort=sortOrder:asc&status=published&pagination[pageSize]=100",
+    locale,
+  ));
+  return response.data;
+});
+
+const getEffectiveCourseRecords = cache(async (locale: Locale): Promise<Array<Record<string, unknown>>> => {
+  const records = await getCourseRecords(locale);
+  if (locale === "en") return records.filter((item) => item.enabled !== false);
+  const englishRecords = await getCourseRecords("en");
+  const translatedCopy = localizeHomepage(fallback, locale).courses;
+  const configuredSlugs = new Set(records.map((item) => String(item.slug)));
+  // Preserve the site's existing authored Chinese course versions while the CMS
+  // translations are unfinished. Only a published, enabled English course can
+  // activate that copy; disabling all courses never resurrects six samples.
+  const translated = englishRecords.flatMap((item) => {
+    const copy = translatedCopy.find((course) => course.slug === item.slug);
+    if (!copy || configuredSlugs.has(copy.slug) || item.enabled === false) return [];
+    const seo = item.seo as Record<string, unknown> | null;
+    return [{ ...item, title: copy.title, summary: copy.summary, audience: "成人及青少年学习者", duration: "咨询确认课程安排", seo: seo ? { noIndex: seo.noIndex, shareImage: seo.shareImage } : null }];
+  });
+  return [...records.filter((item) => item.enabled !== false), ...translated];
+});
 
 async function optionalRequest<T>(path: string, empty: T): Promise<T> {
   const response = await fetch(`${STRAPI_URL}${path}`, {
@@ -567,18 +625,8 @@ export const getHomepageData = cache(async (
         { data: null },
       ),
       getGlobalData(locale),
-      request<{ data: Array<Record<string, unknown>> }>(
-        localizedPath(
-          "/api/courses?populate=cover&sort=sortOrder:asc&filters[enabled][$eq]=true",
-          locale,
-        ),
-      ),
-      request<{ data: Array<Record<string, unknown>> }>(
-        localizedPath(
-          "/api/articles?populate=cover&sort=publishDate:desc&filters[enabled][$eq]=true&pagination[limit]=4",
-          locale,
-        ),
-      ),
+      getEffectiveCourseRecords(locale).then((data) => ({ data })),
+      getPublishedArticleRecords(locale).then((data) => ({ data })),
       request<{ data: Array<Record<string, unknown>> }>(
         localizedPath(
           "/api/testimonials?populate=avatar&sort=sortOrder:asc&filters[enabled][$eq]=true&pagination[limit]=8",
@@ -609,12 +657,14 @@ export const getHomepageData = cache(async (
         ),
       }));
 
-    const courses = courseResponse.data.slice(0, 6).map((course) => ({
+    const courses = courseResponse.data.map((course) => ({
       id: String(course.documentId ?? course.id),
       title: String(course.title ?? ""),
       slug: String(course.slug ?? ""),
       category: String(course.category ?? ""),
-      summary: String(course.summary ?? ""),
+      summary: courseSummary(course.summary, course.title, localeFallback.courses.find((item) => item.slug === course.slug)?.summary ?? ""),
+      seo: parseSeo(course.seo),
+      updatedAt: String(course.updatedAt ?? ""),
       image: mediaUrl(
         course.cover as StrapiMedia,
         fallbackCourseImages[String(course.category)] ??
@@ -627,21 +677,20 @@ export const getHomepageData = cache(async (
       ),
     }));
 
-    const articles = articleResponse.data.map((article, index) => ({
-      id: String(article.documentId ?? article.id),
-      title: String(article.title ?? ""),
-      slug: String(article.slug ?? ""),
-      excerpt: String(article.excerpt ?? ""),
+    const articles = localeFallback.articles.map((categoryCard) => {
+      const article = articleResponse.data.find((item) => item.slug === categoryCard.slug) ?? {};
+      return {
+      ...categoryCard,
       image: mediaUrl(
         article.cover as StrapiMedia,
-        fallbackArticleImages[index % fallbackArticleImages.length],
+        categoryCard.image,
       )!,
       imageAlt: String(
         article.imageAlt ??
           (article.cover as StrapiMedia)?.alternativeText ??
-          `${article.title} editorial cover`,
+          categoryCard.imageAlt,
       ),
-    }));
+    }; });
 
     const testimonials = testimonialResponse.data.map((item, index) => ({
       id: String(item.documentId ?? item.id),
@@ -663,6 +712,7 @@ export const getHomepageData = cache(async (
 
     return {
       ...localeFallback,
+      seo: parseSeo(home.seo),
       pageTitle: String(home.pageTitle ?? localeFallback.pageTitle),
       pageDescription: String(
         home.pageDescription ?? localeFallback.pageDescription,
@@ -671,7 +721,7 @@ export const getHomepageData = cache(async (
       courseSectionTitle: String(
         home.courseSectionTitle ?? localeFallback.courseSectionTitle,
       ),
-      courses: courses.length ? courses : localeFallback.courses,
+      courses,
       knowledgeSectionTitle: String(
         home.knowledgeSectionTitle ?? localeFallback.knowledgeSectionTitle,
       ),
@@ -699,22 +749,25 @@ export const getHomepageData = cache(async (
   }
 });
 
-export async function getCourseDetailData(
+export const getCourseDetailData = cache(async function getCourseDetailData(
   slug: string,
   locale: Locale = "en",
 ): Promise<CourseDetailData | null> {
   const home = await getHomepageData(locale);
   const fallbackCourse = home.courses.find((item) => item.slug === slug);
   try {
-    const response = await request<{ data: Array<Record<string, unknown>> }>(
-      localizedPath(
-        `/api/courses?filters[slug][$eq]=${encodeURIComponent(slug)}&populate=cover`,
-        locale,
-      ),
-    );
-    const raw = response.data[0];
-    if (!raw && !fallbackCourse) return null;
-    const base = fallbackCourse ?? home.courses[0];
+    const records = await getEffectiveCourseRecords(locale);
+    const raw = records.find((item) => item.slug === slug);
+    if (!raw) return null;
+    const base = fallbackCourse ?? {
+      id: String(raw.documentId ?? raw.id),
+      title: String(raw.title ?? ""),
+      slug: String(raw.slug ?? slug),
+      category: String(raw.category ?? ""),
+      summary: String(raw.summary ?? ""),
+      image: fallbackCourseImages[String(raw.category)] ?? "/images/course-private.webp",
+      imageAlt: String(raw.title ?? "Chinese course"),
+    };
     return {
       course: {
         ...base,
@@ -722,7 +775,9 @@ export async function getCourseDetailData(
         title: String(raw?.title ?? base.title),
         slug: String(raw?.slug ?? base.slug),
         category: String(raw?.category ?? base.category),
-        summary: String(raw?.summary ?? base.summary),
+        summary: courseSummary(raw?.summary, raw?.title ?? base.title, base.summary),
+        seo: parseSeo(raw?.seo) ?? base.seo,
+        updatedAt: String(raw?.updatedAt ?? base.updatedAt ?? ""),
         image: mediaUrl(raw?.cover as StrapiMedia, base.image)!,
         imageAlt: String(
           raw?.imageAlt ??
@@ -740,9 +795,9 @@ export async function getCourseDetailData(
   } catch (error) {
     throw error;
   }
-}
+});
 
-function parseArticle(
+export function parseArticle(
   raw: Record<string, unknown>,
   index: number,
   categorySlug?: KnowledgeCategorySlug,
@@ -753,6 +808,8 @@ function parseArticle(
     title: String(raw.title ?? ""),
     slug: String(raw.slug ?? ""),
     excerpt: String(raw.excerpt ?? ""),
+    seo: parseSeo(raw.seo),
+    accessLevel: String(raw.accessLevel ?? "public"),
     image: mediaUrl(
       raw.cover as StrapiMedia,
       categorySlug
@@ -781,51 +838,90 @@ function parseArticle(
     updatedAt: String(raw.updatedAt ?? raw.publishDate ?? raw.publishedAt ?? ""),
     readingMinutes: Number(raw.readingMinutes ?? 5),
     categoryName: String(category?.name ?? "Knowledge Center"),
+    categorySlug,
+    // Original four category seed entries contain only a one-sentence intro.
+    isSample: raw.slug === categorySlug && contentText(raw.body).length < 200,
   };
 }
 
-export async function getKnowledgeArticles(
+// One paginated, published catalog is shared by category pages, metadata and sitemap.
+// Do not cap results at 12: that silently orphaned older CMS articles.
+const getPublishedArticleRecords = cache(async (locale: Locale) => {
+  const records: Array<Record<string, unknown>> = [];
+  let page = 1;
+  let pageCount = 1;
+  do {
+    const response = await request<{
+      data: Array<Record<string, unknown>>;
+      meta?: { pagination?: { pageCount?: number } };
+    }>(localizedPath(
+      `/api/articles?populate[cover]=true&populate[category]=true&populate[seo][populate]=shareImage&sort=publishDate:desc,id:desc&status=published&pagination[pageSize]=100&pagination[page]=${page}`,
+      locale,
+    ));
+    records.push(...response.data);
+    pageCount = response.meta?.pagination?.pageCount ?? 1;
+    page += 1;
+  } while (page <= pageCount);
+  return records;
+});
+
+const getBuiltinArticleOverrideSlugs = cache(async (locale: Locale) => {
+  const response = await optionalRequest<{ data: string[] }>(
+    localizedPath("/api/articles/builtin-overrides", locale),
+    { data: [] },
+  );
+  if (!Array.isArray(response.data)) throw new Error("Invalid built-in article override response");
+  return response.data.filter((slug) => typeof slug === "string" && Object.hasOwn(editorialGuides, slug));
+});
+
+export const getKnowledgeArticles = cache(async function getKnowledgeArticles(
   category: KnowledgeCategorySlug,
   locale: Locale = "en",
 ) {
   try {
-    const response = await request<{ data: Array<Record<string, unknown>> }>(
-      localizedPath(
-        "/api/articles?populate=cover,category&sort=publishDate:desc&filters[enabled][$eq]=true&pagination[limit]=100",
-        locale,
-      ),
-    );
-    const matchingArticles = response.data.filter((article) => {
+    const [records, builtinOverrides] = await Promise.all([
+      getPublishedArticleRecords(locale),
+      getBuiltinArticleOverrideSlugs(locale),
+    ]);
+    const belongsToCategory = (article: Record<string, unknown>) => {
       const relation = article.category as Record<string, unknown> | null | undefined;
-      return String(article.slug ?? "") === category || String(relation?.slug ?? "") === category;
-    });
-    if (matchingArticles.length) {
-      const remoteArticles = matchingArticles.map((article, index) => parseArticle(article, index, category));
-      const fallbackArticles = getFallbackKnowledgeArticles(category, locale);
-      const remoteSlugs = new Set(remoteArticles.map((article) => article.slug));
-      return [...remoteArticles, ...fallbackArticles.filter((article) => !remoteSlugs.has(article.slug))].slice(0, 12);
-    }
+      return relation?.slug ? String(relation.slug) === category : String(article.slug ?? "") === category;
+    };
+    const matchingArticles = records.filter((article) => article.enabled !== false && (article.accessLevel == null || article.accessLevel === "public") && belongsToCategory(article));
+    const remoteArticles = matchingArticles.map((article, index) => ({ ...parseArticle(article, index, category), categoryName: knowledgeCategories[category][locale].title }));
+    // CMS ownership persists for the curated URLs even when the public API
+    // hides the record because it is disabled, private or no longer published.
+    const remoteSlugs = new Set([...records.map((article) => String(article.slug ?? "")), ...builtinOverrides]);
+    const fallbackArticles = getFallbackKnowledgeArticles(category, locale).filter((article) => !remoteSlugs.has(article.slug));
+    return [...remoteArticles, ...fallbackArticles];
   } catch (error) {
     throw error;
   }
-  return getFallbackKnowledgeArticles(category, locale);
-}
+});
 
-export async function getKnowledgeArticle(
+export const getKnowledgeArticle = cache(async function getKnowledgeArticle(
   slug: string,
   category: KnowledgeCategorySlug,
   locale: Locale = "en",
 ) {
-  try {
-    const response = await request<{ data: Array<Record<string, unknown>> }>(
-      localizedPath(
-        `/api/articles?populate=cover,category&filters[slug][$eq]=${encodeURIComponent(slug)}&filters[enabled][$eq]=true`,
-        locale,
-      ),
-    );
-    if (response.data[0]) return parseArticle(response.data[0], 0, category);
-  } catch (error) {
-    throw error;
+  const articles = await getKnowledgeArticles(category, locale);
+  return articles.find((article) => article.slug === slug) ?? null;
+});
+
+export function isIndexableArticle(article: ArticleDetailData) {
+  return !article.isSample && article.seo?.noIndex !== true && (!article.accessLevel || article.accessLevel === "public") && contentText(article.body).length > 0;
+}
+
+export async function getArticleLanguagePaths(article: ArticleDetailData, category: KnowledgeCategorySlug, locale: Locale) {
+  const otherLocale = locale === "en" ? "zh" : "en";
+  const otherArticles = await getKnowledgeArticles(category, otherLocale);
+  const translation = otherArticles.find((item) => item.id === article.id)
+    ?? otherArticles.find((item) => item.slug === article.slug);
+  const paths: Array<{ locale: Locale; path: string }> = [
+    { locale, path: `/${locale}/knowledge/${category}/${article.slug}` },
+  ];
+  if (translation && isIndexableArticle(translation)) {
+    paths.push({ locale: otherLocale, path: `/${otherLocale}/knowledge/${category}/${translation.slug}` });
   }
-  return getFallbackKnowledgeArticles(category, locale).find((article) => article.slug === slug) ?? null;
+  return paths;
 }

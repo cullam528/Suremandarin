@@ -4,6 +4,7 @@ import { TheySayContent } from "@/components/TheySayContent";
 import { SiteShell } from "@/components/site/SiteShell";
 import { isLocale } from "@/lib/i18n";
 import { getHomepageData } from "@/lib/strapi";
+import { pageMetadata } from "@/lib/seo";
 
 export async function generateMetadata({
   params,
@@ -12,13 +13,15 @@ export async function generateMetadata({
 }): Promise<Metadata> {
   const { lang } = await params;
   if (!isLocale(lang)) return {};
-  return {
+  return pageMetadata({
+    locale: lang,
+    path: "/theysay",
     title: lang === "zh" ? "学员评价 | They Say" : "They Say | SureMandarin",
     description:
       lang === "zh"
         ? "了解全球学习者在 SureMandarin 的真实学习体验。"
         : "Hear real learning stories from the SureMandarin community.",
-  };
+  });
 }
 
 export default async function TheySayPage({

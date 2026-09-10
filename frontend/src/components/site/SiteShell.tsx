@@ -8,15 +8,17 @@ import { getGlobalData } from "@/lib/strapi";
 export async function SiteShell({
   children,
   locale,
+  languageUrls,
 }: {
   children: React.ReactNode;
   locale: Locale;
+  languageUrls?: Partial<Record<Locale, string>>;
 }) {
   const global = await getGlobalData(locale);
   return (
     <>
       <SiteStructuredData locale={locale} global={global} />
-      <Header settings={global} locale={locale} />
+      <Header settings={global} locale={locale} languageUrls={languageUrls} />
       <main>{children}</main>
       <ContactWidget
         settings={{
@@ -24,7 +26,7 @@ export async function SiteShell({
           contactTitle: locale === "zh" ? "联系我们" : global.contactTitle,
         }}
       />
-      <Footer settings={global} locale={locale} />
+      <Footer settings={global} locale={locale} languageUrls={languageUrls} />
     </>
   );
 }

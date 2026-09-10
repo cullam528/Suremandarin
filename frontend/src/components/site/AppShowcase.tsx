@@ -1,25 +1,42 @@
-import { Apple, ExternalLink, Globe2, Share2, Smartphone } from "lucide-react";
+import Link from "next/link";
+import { Apple, ArrowRight, ExternalLink, Globe2, Share2, Smartphone } from "lucide-react";
 import type { Locale } from "@/lib/i18n";
 import { getHomepageData, type GlobalData } from "@/lib/strapi";
+
+function validSocialUrl(value?: string) {
+  if (!value || !/^https?:\/\/\S+$/i.test(value.trim())) return undefined;
+  try {
+    const url = new URL(value.trim());
+    return url.hostname ? url.href : undefined;
+  } catch {
+    return undefined;
+  }
+}
 
 export async function AppShowcase({
   locale,
   settings,
+  headingLevel = 1,
 }: {
   locale: Locale;
   settings?: GlobalData;
+  headingLevel?: 1 | 2;
 }) {
   const zh = locale === "zh";
+  const Heading = headingLevel === 1 ? "h1" : "h2";
+  const Subheading = headingLevel === 1 ? "h2" : "h3";
   const global = settings ?? (await getHomepageData(locale)).global;
   const configured = new Map(
-    global.socialLinks.map((item) => [item.platform.toLowerCase(), item.url]),
+    global.socialLinks.map((item) => [item.platform.trim().toLowerCase(), validSocialUrl(item.url)]),
   );
   const socials = [
-    ["facebook", "Facebook", Share2],
-    ["tiktok", "TikTok", Smartphone],
-    ["x", "X", Globe2],
-    ["linkedin", "LinkedIn", Share2],
-  ] as const;
+    { key: "facebook", label: "Facebook", Icon: Share2, href: configured.get("facebook") },
+    { key: "tiktok", label: "TikTok", Icon: Smartphone, href: configured.get("tiktok") },
+    { key: "x", label: "X", Icon: Globe2, href: configured.get("x") || configured.get("twitter") || "https://x.com/JessSuremanda" },
+    { key: "linkedin", label: "LinkedIn", Icon: Share2, href: configured.get("linkedin") },
+    { key: "youtube", label: "YouTube", Icon: Share2, href: configured.get("youtube") || "https://www.youtube.com/@Suremandarin" },
+    { key: "xiaohongshu", label: zh ? "小红书" : "Xiaohongshu", Icon: Share2, href: configured.get("xiaohongshu") || configured.get("xhs") || configured.get("小红书") || "https://xhslink.cn/m/5k2RxYiaMts" },
+  ].filter((social) => social.href);
   return (
     <section className="sm-app-showcase soft-gradient py-16 sm:py-24">
       <div className="page-shell">
@@ -27,31 +44,35 @@ export async function AppShowcase({
           <p className="section-kicker">
             {zh ? "App 与小程序" : "App & mini program"}
           </p>
-          <h1 className="mt-4 text-4xl font-extrabold tracking-tight text-brand-navy sm:text-6xl">
+          <Heading className="mt-4 text-4xl font-extrabold tracking-tight text-brand-navy sm:text-6xl">
             {zh ? "把中文学习带在身边" : "Take your Chinese journey everywhere"}
-          </h1>
+          </Heading>
           <p className="mt-5 text-base leading-8 text-slate-600">
             {zh
-              ? "使用 iOS、Android App 和小程序，随时访问课程、学习进度、资料与社区。"
-              : "Use the iOS and Android apps or mini program to keep your courses, progress, resources, and community close."}
+              ? "现在即可在浏览器中体验 SureMandarin Daily 七天中文口语挑战，也可将网页版添加到手机主屏幕。iOS、Android App 和微信小程序尚未上线。"
+              : "Start the SureMandarin Daily seven-day Chinese speaking challenge in your browser, or add the web app to your phone’s home screen. Native iOS and Android apps and the WeChat mini program are not available yet."}
           </p>
+          <Link href={`/${locale}/daily`} className="mt-6 inline-flex items-center gap-2 rounded-xl bg-brand-blue px-5 py-3 text-sm font-bold text-white hover:bg-blue-700">
+            {zh ? "开始七天中文口语挑战" : "Start the seven-day speaking challenge"}
+            <ArrowRight size={17} aria-hidden="true" />
+          </Link>
         </div>
         <div className="mt-12 grid gap-6 lg:grid-cols-3">
-          <DownloadCard locale={locale} kind="ios" />
-          <DownloadCard locale={locale} kind="android" />
+          <DownloadCard locale={locale} kind="ios" headingLevel={headingLevel === 1 ? 2 : 3} />
+          <DownloadCard locale={locale} kind="android" headingLevel={headingLevel === 1 ? 2 : 3} />
           <div className="rounded-3xl bg-brand-navy p-7 text-white shadow-xl">
-            <Globe2 className="text-brand-cyan" size={30} />
-            <h2 className="mt-6 text-2xl font-extrabold">
+            <Globe2 className="text-brand-cyan" size={30} aria-hidden="true" />
+            <Subheading className="mt-6 text-2xl font-extrabold">
               {zh ? "微信小程序" : "WeChat mini program"}
-            </h2>
+            </Subheading>
             <p className="mt-3 text-sm leading-7 text-blue-100">
               {zh
-                ? "无需安装，打开微信即可开始学习。"
-                : "Start learning inside WeChat without installing another app."}
+                ? "敬请期待。上线前，你可以使用 Daily 网页版练习中文。"
+                : "Coming soon. Until it is available, practise Chinese with Daily on the web."}
             </p>
-            <div className="mt-6 grid size-36 place-items-center rounded-2xl bg-white text-center text-xs font-extrabold text-brand-navy">
-              {zh ? "小程序二维码" : "Mini program QR"}
-            </div>
+            <span className="mt-6 inline-flex rounded-full bg-white/15 px-4 py-2 text-xs font-bold text-white">
+              {zh ? "尚未上线" : "Not yet available"}
+            </span>
           </div>
         </div>
         <div className="mt-14 rounded-3xl bg-white p-8 shadow-xl sm:p-10">
@@ -60,9 +81,9 @@ export async function AppShowcase({
               <p className="section-kicker">
                 {zh ? "关注我们" : "Follow along"}
               </p>
-              <h2 className="mt-3 text-3xl font-extrabold text-brand-navy">
+              <Subheading className="mt-3 text-3xl font-extrabold text-brand-navy">
                 {zh ? "在社交平台获取最新动态" : "Stay connected on social"}
-              </h2>
+              </Subheading>
             </div>
             <p className="max-w-md text-sm leading-6 text-slate-500">
               {zh
@@ -71,38 +92,23 @@ export async function AppShowcase({
             </p>
           </div>
           <div className="mt-8 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-            {socials.map(([key, label, Icon]) => {
-              const href = configured.get(key);
-              return (
+            {socials.map(({ key, label, Icon, href }) => (
                 <a
                   key={key}
-                  href={href || "#"}
-                  target={href ? "_blank" : undefined}
-                  rel={href ? "noreferrer" : undefined}
-                  className={`flex items-center justify-between rounded-2xl border p-5 transition ${href ? "border-brand-line text-brand-navy hover:border-brand-blue hover:bg-blue-50" : "cursor-not-allowed border-dashed border-slate-200 text-slate-400"}`}
-                  aria-disabled={!href}
+                  href={href}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center justify-between rounded-2xl border border-brand-line p-5 text-brand-navy transition hover:border-brand-blue hover:bg-blue-50"
                 >
                   <span className="flex items-center gap-3 font-extrabold">
-                    <Icon size={21} />
+                    <Icon size={21} aria-hidden="true" />
                     {label}
                   </span>
-                  {href ? (
-                    <ExternalLink size={16} />
-                  ) : (
-                    <span className="text-[10px]">
-                      {zh ? "待配置" : "Add link"}
-                    </span>
-                  )}
+                  <ExternalLink size={16} aria-hidden="true" />
                 </a>
-              );
-            })}
+            ))}
           </div>
         </div>
-        <p className="mt-6 text-center text-xs text-slate-400">
-          {zh
-            ? "二维码和社交链接可在 Strapi 全局设置中替换。"
-            : "QR images and social links can be replaced from Strapi Global Settings."}
-        </p>
       </div>
     </section>
   );
@@ -111,52 +117,34 @@ export async function AppShowcase({
 function DownloadCard({
   locale,
   kind,
+  headingLevel,
 }: {
   locale: Locale;
   kind: "ios" | "android";
+  headingLevel: 2 | 3;
 }) {
   const zh = locale === "zh";
   const ios = kind === "ios";
+  const Heading = headingLevel === 2 ? "h2" : "h3";
   return (
     <article className="rounded-3xl border border-brand-line bg-white p-7 shadow-sm">
       <div className="flex items-center gap-3 text-brand-blue">
-        {ios ? <Apple size={27} /> : <Smartphone size={27} />}
+        {ios ? <Apple size={27} aria-hidden="true" /> : <Smartphone size={27} aria-hidden="true" />}
         <span className="text-sm font-extrabold uppercase tracking-widest">
           {ios ? "iOS" : "Android"}
         </span>
       </div>
-      <h2 className="mt-6 text-2xl font-extrabold text-brand-navy">
-        {ios
-          ? zh
-            ? "下载 iOS App"
-            : "Download for iOS"
-          : zh
-            ? "下载 Android App"
-            : "Download for Android"}
-      </h2>
+      <Heading className="mt-6 text-2xl font-extrabold text-brand-navy">
+        {ios ? "iOS App" : "Android App"}
+      </Heading>
       <p className="mt-3 text-sm leading-7 text-slate-500">
         {zh
-          ? "扫码下载并同步你的学习账户。"
-          : "Scan to download and keep your learning account in sync."}
+          ? "敬请期待。现在可以先在手机浏览器打开 Daily，开始口语练习。"
+          : "Coming soon. For now, open Daily in your phone’s browser to start speaking practice."}
       </p>
-      <div
-        className="mt-6 grid size-40 place-items-center rounded-2xl border-8 border-white bg-slate-100 bg-[length:16px_16px] shadow-inner"
-        style={{
-          backgroundImage:
-            "linear-gradient(45deg,#0a1d3d 25%,transparent 25%,transparent 75%,#0a1d3d 75%),linear-gradient(45deg,#0a1d3d 25%,transparent 25%,transparent 75%,#0a1d3d 75%)",
-          backgroundPosition: "0 0,8px 8px",
-        }}
-        aria-label={`${ios ? "iOS" : "Android"} QR code placeholder`}
-      >
-        <span className="rounded bg-white px-2 py-1 text-[10px] font-extrabold text-brand-navy">
-          QR CODE
-        </span>
-      </div>
-      <p className="mt-4 text-xs text-slate-400">
-        {zh
-          ? "App 上线后替换为真实下载二维码"
-          : "Replace with the live store QR after launch"}
-      </p>
+      <span className="mt-6 inline-flex rounded-full bg-slate-100 px-4 py-2 text-xs font-bold text-slate-600">
+        {zh ? "尚未上线" : "Not yet available"}
+      </span>
     </article>
   );
 }

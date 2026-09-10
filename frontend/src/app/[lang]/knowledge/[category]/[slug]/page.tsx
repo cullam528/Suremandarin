@@ -4,7 +4,9 @@ import { ArticleDetail } from "@/components/knowledge/ArticleDetail";
 import { SiteShell } from "@/components/site/SiteShell";
 import { isLocale } from "@/lib/i18n";
 import { absoluteUrl, breadcrumbStructuredData, pageMetadata } from "@/lib/seo";
-import { getKnowledgeArticle, knowledgeCategories, type KnowledgeCategorySlug } from "@/lib/strapi";
+import { getKnowledgeArticles, getArticleLanguagePaths, isIndexableArticle, knowledgeCategories, type KnowledgeCategorySlug } from "@/lib/strapi";
+import { getReadableKnowledgeArticle as getKnowledgeArticle } from "@/lib/member-article";
+import { languagePaths, searchDescription, validContentDate } from "@/lib/content-seo";
 import { StructuredData } from "@/components/seo/StructuredData";
 
 export async function generateMetadata({
@@ -19,26 +21,23 @@ export async function generateMetadata({
     category as KnowledgeCategorySlug,
     lang,
   );
-  return article
-    ? pageMetadata({
+  if (!article) notFound();
+  return pageMetadata({
         locale: lang,
         title: `${article.title} | SureMandarin`,
-        description: article.excerpt,
+        description: searchDescription(article.excerpt, article.body),
         path: `/knowledge/${category}/${slug}`,
         image: article.image,
         imageAlt: article.imageAlt,
+        seo: article.seo,
+        noIndex: !isIndexableArticle(article),
+        languageAlternates: languagePaths(await getArticleLanguagePaths(article, category as KnowledgeCategorySlug, lang)),
         article: {
-          publishedTime: article.publishDate || undefined,
-          modifiedTime: article.updatedAt || article.publishDate || undefined,
+          publishedTime: validContentDate(article.publishDate),
+          modifiedTime: validContentDate(article.updatedAt || article.publishDate),
           authors: [article.authorName],
           section: article.categoryName,
         },
-      })
-    : pageMetadata({
-        locale: lang,
-        title: lang === "zh" ? "中文学习文章 | SureMandarin" : "Chinese Learning Article | SureMandarin",
-        description: lang === "zh" ? "SureMandarin 中文学习文章。" : "A Chinese learning article from SureMandarin.",
-        path: `/knowledge/${category}/${slug}`,
       });
 }
 
@@ -52,12 +51,16 @@ export default async function KnowledgeArticlePage({
   const categorySlug = category as KnowledgeCategorySlug;
   const article = await getKnowledgeArticle(slug, categorySlug, lang);
   if (!article) notFound();
+  const [relatedArticles, translations] = await Promise.all([
+    getKnowledgeArticles(categorySlug, lang).then((items) => items.filter((item) => item.slug !== slug && isIndexableArticle(item)).slice(0, 3)),
+    getArticleLanguagePaths(article, categorySlug, lang),
+  ]);
   const articleUrl = absoluteUrl(`/${lang}/knowledge/${category}/${slug}`);
   const articleImage = article.image.startsWith("http")
     ? article.image
     : absoluteUrl(article.image);
   return (
-    <SiteShell locale={lang}>
+    <SiteShell locale={lang} languageUrls={{ en: `/en/knowledge/${category}`, zh: `/zh/knowledge/${category}`, ...Object.fromEntries(translations.map((item) => [item.locale, item.path])) }}>
       <StructuredData
         data={[
           {
@@ -67,11 +70,14 @@ export default async function KnowledgeArticlePage({
             headline: article.title,
             description: article.excerpt,
             image: articleImage,
-            datePublished: article.publishDate || undefined,
-            dateModified: article.updatedAt || article.publishDate || undefined,
-            author: { "@type": "Person", name: article.authorName },
+            datePublished: validContentDate(article.publishDate),
+            dateModified: validContentDate(article.updatedAt || article.publishDate),
+            author: /SureMandarin|团队|编辑部/i.test(article.authorName)
+              ? { "@type": "Organization", name: article.authorName, url: absoluteUrl(`/${lang}/about`) }
+              : { "@type": "Person", name: article.authorName },
             publisher: {
               "@type": "EducationalOrganization",
+              "@id": absoluteUrl("/#organization"),
               name: "SureMandarin",
               url: absoluteUrl("/"),
               logo: {
@@ -83,6 +89,8 @@ export default async function KnowledgeArticlePage({
             },
             mainEntityOfPage: articleUrl,
             inLanguage: lang === "zh" ? "zh-CN" : "en",
+            articleSection: knowledgeCategories[categorySlug][lang].title,
+            isPartOf: { "@id": absoluteUrl("/#website") },
           },
           breadcrumbStructuredData([
             { name: lang === "zh" ? "首页" : "Home", path: `/${lang}` },
@@ -92,7 +100,7 @@ export default async function KnowledgeArticlePage({
           ]),
         ]}
       />
-      <ArticleDetail article={article} category={categorySlug} locale={lang} />
+      <ArticleDetail article={article} category={categorySlug} locale={lang} relatedArticles={relatedArticles} translations={translations} />
     </SiteShell>
   );
 }

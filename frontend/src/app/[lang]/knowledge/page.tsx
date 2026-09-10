@@ -67,7 +67,7 @@ export default async function KnowledgeIndex({
       <KnowledgeOverview
         sections={Object.keys(knowledgeCategories).map((category, index) => ({
           category: category as KnowledgeCategorySlug,
-          articles: articleGroups[index],
+          articles: articleGroups[index].filter((article) => !article.isSample),
         }))}
         title={
           lang === "zh"
@@ -76,7 +76,7 @@ export default async function KnowledgeIndex({
         }
         locale={lang}
       />
-      <AppShowcase locale={lang} settings={home.global} />
+      <AppShowcase locale={lang} settings={home.global} headingLevel={2} />
     </SiteShell>
   );
 }

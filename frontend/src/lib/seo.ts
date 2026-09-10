@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import type { Locale } from "@/lib/i18n";
 import type { GlobalData } from "@/lib/strapi";
+import type { ContentSeo } from "@/lib/content-seo";
+import { contentText } from "@/lib/content-seo";
 
 /**
  * Keep the public URL configurable so preview deployments never get indexed
@@ -11,6 +13,8 @@ export const siteUrl =
   "https://www.suremandarin.com";
 
 export const siteName = "SureMandarin";
+export const indexingAllowed = process.env.SEO_NOINDEX !== "true" && (!process.env.VERCEL_ENV || process.env.VERCEL_ENV === "production");
+export const bingSiteVerification = process.env.BING_SITE_VERIFICATION?.trim() || process.env.NEXT_PUBLIC_BING_SITE_VERIFICATION?.trim() || undefined;
 
 export const googleSiteVerification =
   process.env.GOOGLE_SITE_VERIFICATION?.trim() ||
@@ -19,14 +23,14 @@ export const googleSiteVerification =
 
 export const seoCopy = {
   en: {
-    title: "SureMandarin | Chinese Courses for Confident Global Learners",
+    title: "Learn Mandarin Online & in China | SureMandarin",
     description:
-      "Learn Mandarin Chinese with expert teachers through private, group, online, IB, travel, and tailored courses for learners worldwide.",
+      "Learn Mandarin with a real teacher. Compare private, group, online, IB Chinese and immersion courses, take a free level test and plan your lessons.",
     shortDescription:
       "Personalized Mandarin Chinese courses for learners worldwide.",
   },
   zh: {
-    title: "SureMandarin | 面向全球学习者的中文培训课程",
+    title: "SureMandarin 中文培训｜在线中文、一对一及 IB 中文辅导",
     description:
       "SureMandarin 提供一对一、小组、在线、IB、游学和定制中文培训，帮助全球学习者自信、实用地学好中文。",
     shortDescription: "面向全球学习者的个性化中文培训课程。",
@@ -54,6 +58,8 @@ export function pageMetadata({
   imageAlt,
   noIndex = false,
   article,
+  seo,
+  languageAlternates,
 }: {
   locale: Locale;
   title: string;
@@ -62,6 +68,9 @@ export function pageMetadata({
   image?: string;
   imageAlt?: string;
   noIndex?: boolean;
+  seo?: ContentSeo;
+  /** Actual published translations for CMS documents; omitted for static bilingual pages. */
+  languageAlternates?: Record<string, string>;
   article?: {
     publishedTime?: string;
     modifiedTime?: string;
@@ -71,11 +80,12 @@ export function pageMetadata({
 }): Metadata {
   const languages = localizedUrls(path);
   const canonical = languages[locale];
-  const socialImage = absoluteUrl(image);
+  title = contentText(seo?.metaTitle || title);
+  description = contentText(seo?.metaDescription || description);
+  noIndex = noIndex || seo?.noIndex === true || !indexingAllowed;
+  const socialImage = absoluteUrl(seo?.shareImage || image);
   const openGraphImage = {
     url: socialImage,
-    width: 1200,
-    height: 675,
     alt: imageAlt || title,
   };
   return {
@@ -84,7 +94,7 @@ export function pageMetadata({
     metadataBase: new URL(siteUrl),
     alternates: {
       canonical,
-      languages: {
+      languages: languageAlternates ? Object.fromEntries(Object.entries(languageAlternates).map(([key, value]) => [key, absoluteUrl(value)])) : {
         en: languages.en,
         "zh-Hans": languages.zh,
         "x-default": languages.en,
@@ -122,7 +132,7 @@ export function pageMetadata({
       images: [socialImage],
     },
     robots: noIndex
-      ? { index: false, follow: false }
+      ? { index: false, follow: true }
       : {
           index: true,
           follow: true,
@@ -146,13 +156,18 @@ export function jsonLd(data: Record<string, unknown> | Record<string, unknown>[]
 
 export function siteStructuredData({
   global,
+  locale,
 }: {
   locale: Locale;
   global?: Partial<GlobalData>;
 }) {
-  const socialLinks = (global?.socialLinks ?? [])
+  const socialLinks = [...new Set([...(global?.socialLinks ?? [])
     .map((item) => item.url)
-    .filter((url) => /^https?:\/\//i.test(url));
+    .filter((url) => /^https?:\/\//i.test(url)),
+    "https://www.youtube.com/@Suremandarin",
+    "https://x.com/JessSuremanda",
+    "https://xhslink.cn/m/5k2RxYiaMts",
+  ])];
   return {
     "@context": "https://schema.org",
     "@graph": [{
@@ -168,7 +183,7 @@ export function siteStructuredData({
         height: 256,
       },
       image: absoluteUrl("/images/hero-global-learners.webp"),
-      description: seoCopy.en.description,
+      description: seoCopy[locale].description,
       ...(socialLinks.length ? { sameAs: socialLinks } : {}),
       areaServed: "Worldwide",
       knowsAbout: [

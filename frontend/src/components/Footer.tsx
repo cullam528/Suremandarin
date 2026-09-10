@@ -44,9 +44,11 @@ const socialAssetVersion = "20260811";
 export function Footer({
   settings,
   locale = "en",
+  languageUrls,
 }: {
   settings: GlobalData;
   locale?: Locale;
+  languageUrls?: Partial<Record<Locale, string>>;
 }) {
   const footerColumns = locale === "zh" ? zhColumns : columns;
   const footerHref = (link: string) => {
@@ -66,7 +68,7 @@ export function Footer({
             学习指南: `/${locale}/knowledge`,
             常见问题: `/${locale}/faq`,
             联系我们: `/${locale}/contact`,
-            网站地图: `/${locale}`,
+            网站地图: `/${locale}/site-map`,
             关于我们: `/${locale}/about`,
             加入我们: `/${locale}/about`,
             合作伙伴: `/${locale}/contact`,
@@ -87,7 +89,7 @@ export function Footer({
             "Study Guide": `/${locale}/knowledge`,
             FAQ: `/${locale}/faq`,
             "Contact Us": `/${locale}/contact`,
-            "Site Map": `/${locale}`,
+            "Site Map": `/${locale}/site-map`,
             "About Us": `/${locale}/about`,
             Careers: `/${locale}/about`,
             Partners: `/${locale}/contact`,
@@ -197,7 +199,7 @@ export function Footer({
         </section>
       </div>
       <div className="page-shell flex flex-col gap-3 border-t border-white/10 py-5 text-xs text-slate-400 sm:flex-row sm:items-center sm:justify-between">
-        <LanguageSwitcher locale={locale} />
+        <LanguageSwitcher locale={locale} languageUrls={languageUrls} />
         <p>{settings.copyright}</p>
         <p>
           <a href={`/${locale}/terms`}>

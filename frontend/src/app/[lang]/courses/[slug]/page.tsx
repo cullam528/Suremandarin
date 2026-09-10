@@ -4,10 +4,26 @@ import { ContactWidget } from "@/components/ContactWidget";
 import { CourseDetail } from "@/components/course-detail/CourseDetail";
 import { Footer } from "@/components/Footer";
 import { Header } from "@/components/Header";
-import { isLocale } from "@/lib/i18n";
+import { isLocale, type Locale } from "@/lib/i18n";
 import { absoluteUrl, breadcrumbStructuredData, pageMetadata } from "@/lib/seo";
-import { getCourseDetailData } from "@/lib/strapi";
-import { StructuredData } from "@/components/seo/StructuredData";
+import { getCourseDetailData, getHomepageData } from "@/lib/strapi";
+import { languagePaths } from "@/lib/content-seo";
+import { StructuredData, SiteStructuredData } from "@/components/seo/StructuredData";
+
+async function getCourseLanguagePaths(id: string, slug: string, locale: Locale) {
+  const otherLocale: Locale = locale === "en" ? "zh" : "en";
+  const otherHome = await getHomepageData(otherLocale);
+  const translation = otherHome.courses.find((item) => item.id === id)
+    ?? otherHome.courses.find((item) => item.slug === slug);
+  const paths: Array<{ locale: Locale; path: string }> = [
+    { locale, path: `/${locale}/courses/${slug}` },
+  ];
+  if (translation && translation.seo?.noIndex !== true) {
+    paths.push({ locale: otherLocale, path: `/${otherLocale}/courses/${translation.slug}` });
+  }
+  return paths;
+}
+
 export async function generateMetadata({
   params,
 }: {
@@ -16,20 +32,17 @@ export async function generateMetadata({
   const { lang, slug } = await params;
   if (!isLocale(lang)) return {};
   const d = await getCourseDetailData(slug, lang);
-  return d
-    ? pageMetadata({
+  if (!d) notFound();
+  return pageMetadata({
         locale: lang,
-        title: `${d.course.title} | SureMandarin`,
+        title: lang === "en" && !/chinese|mandarin/i.test(d.course.title)
+          ? `${d.course.title} — Learn Mandarin | SureMandarin` : `${d.course.title} | SureMandarin`,
         description: d.course.summary,
         path: `/courses/${slug}`,
         image: d.course.image,
         imageAlt: d.course.imageAlt,
-      })
-    : pageMetadata({
-        locale: lang,
-        title: lang === "zh" ? "中文课程 | SureMandarin" : "Chinese Course | SureMandarin",
-        description: lang === "zh" ? "了解 SureMandarin 中文课程。" : "Explore a SureMandarin Chinese course.",
-        path: `/courses/${slug}`,
+        seo: d.course.seo,
+        languageAlternates: languagePaths(await getCourseLanguagePaths(d.course.id, slug, lang)),
       });
 }
 export default async function LocalizedCourse({
@@ -49,12 +62,19 @@ export default async function LocalizedCourse({
   if (!isLocale(lang)) notFound();
   const d = await getCourseDetailData(slug, lang);
   if (!d) notFound();
+  const translations = await getCourseLanguagePaths(d.course.id, slug, lang);
+  const languageUrls: Record<Locale, string> = {
+    en: "/en/courses",
+    zh: "/zh/courses",
+    ...Object.fromEntries(translations.map((item) => [item.locale, item.path])),
+  };
   const courseUrl = absoluteUrl(`/${lang}/courses/${slug}`);
   const courseImage = d.course.image.startsWith("http")
     ? d.course.image
     : absoluteUrl(d.course.image);
   return (
     <>
+      <SiteStructuredData locale={lang} global={d.global} />
       <StructuredData
         data={[
           {
@@ -68,15 +88,12 @@ export default async function LocalizedCourse({
             inLanguage: lang === "zh" ? "zh-CN" : "en",
             provider: {
               "@type": "EducationalOrganization",
+              "@id": absoluteUrl("/#organization"),
               name: "SureMandarin",
               url: absoluteUrl("/"),
             },
             educationalLevel: d.course.level,
             audience: { "@type": "Audience", audienceType: d.course.audience },
-            hasCourseInstance: {
-              "@type": "CourseInstance",
-              courseMode: d.course.deliveryMode,
-            },
           },
           breadcrumbStructuredData([
             { name: lang === "zh" ? "首页" : "Home", path: `/${lang}` },
@@ -85,7 +102,7 @@ export default async function LocalizedCourse({
           ]),
         ]}
       />
-      <Header settings={d.global} locale={lang} />
+      <Header settings={d.global} locale={lang} languageUrls={languageUrls} />
       <main>
         <CourseDetail
           data={d}
@@ -110,7 +127,7 @@ export default async function LocalizedCourse({
           contactTitle: lang === "zh" ? "联系我们" : d.global.contactTitle,
         }}
       />
-      <Footer settings={d.global} locale={lang} />
+      <Footer settings={d.global} locale={lang} languageUrls={languageUrls} />
     </>
   );
 }
