@@ -6,6 +6,7 @@ import { CheckCircle2, Eye, EyeOff, LockKeyhole, Mail } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import type { Locale } from "@/lib/i18n";
+import { sendAuthRequest } from "@/lib/auth-request";
 import { PuzzleCaptcha, type CaptchaProof } from "./PuzzleCaptcha";
 
 export function PasswordRecoveryForm({
@@ -29,9 +30,16 @@ export function PasswordRecoveryForm({
 
   async function submit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (loading || (forgot && !captchaProof)) return;
+    const data = new FormData(event.currentTarget);
+    if (!forgot && (!resetCode || data.get("password") !== data.get("passwordConfirmation"))) {
+      setError(!resetCode
+        ? (zh ? "重置链接无效，请重新申请密码重置邮件。" : "This reset link is invalid. Please request a new reset email.")
+        : (zh ? "两次输入的密码不一致，请检查。" : "Your passwords do not match. Please check them."));
+      return;
+    }
     setLoading(true);
     setError("");
-    const data = new FormData(event.currentTarget);
     const payload = forgot
       ? {
           email: data.get("email"),
@@ -42,20 +50,17 @@ export function PasswordRecoveryForm({
           password: data.get("password"),
           passwordConfirmation: data.get("passwordConfirmation"),
         };
-    const response = await fetch(`/api/auth/${forgot ? "forgot-password" : "reset-password"}`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload),
-    });
-    const result = await response.json();
-    setLoading(false);
-    if (!response.ok) {
-      setError(result.error ?? (zh ? "请稍后重试。" : "Please try again."));
+    try {
+      await sendAuthRequest(`/api/auth/${forgot ? "forgot-password" : "reset-password"}`, payload, locale);
+    } catch (error) {
+      setError(error instanceof Error ? error.message : (zh ? "请稍后重试。" : "Please try again."));
       if (forgot) {
         setCaptchaProof(null);
         setCaptchaVersion((value) => value + 1);
       }
       return;
+    } finally {
+      setLoading(false);
     }
     setSuccess(true);
     if (!forgot) {
@@ -91,14 +96,14 @@ export function PasswordRecoveryForm({
           <form onSubmit={submit} className="mt-8 grid gap-4">
             {forgot ? (
               <>
-                <label className="auth-field"><Mail /><input required name="email" type="email" autoComplete="email" placeholder={zh ? "注册邮箱" : "Account email"} /></label>
+                <label className="auth-field"><Mail /><input required name="email" type="email" autoComplete="email" aria-label={zh ? "注册邮箱" : "Account email"} placeholder={zh ? "注册邮箱" : "Account email"} /></label>
                 <input name="company" type="text" tabIndex={-1} autoComplete="off" aria-hidden="true" className="pointer-events-none absolute h-px w-px opacity-0" />
                 <PuzzleCaptcha key={`forgot-${captchaVersion}`} locale={locale} onChange={setCaptchaProof} />
               </>
             ) : (
               <>
-                <PasswordField name="password" label={zh ? "新密码" : "New password"} show={show} onToggle={() => setShow(!show)} />
-                <label className="auth-field"><LockKeyhole /><input required name="passwordConfirmation" type={show ? "text" : "password"} minLength={8} autoComplete="new-password" placeholder={zh ? "再次输入新密码" : "Confirm new password"} /></label>
+                <PasswordField name="password" label={zh ? "新密码" : "New password"} show={show} zh={zh} onToggle={() => setShow(!show)} />
+                <label className="auth-field"><LockKeyhole /><input required name="passwordConfirmation" type={show ? "text" : "password"} minLength={8} autoComplete="new-password" aria-label={zh ? "再次输入新密码" : "Confirm new password"} placeholder={zh ? "再次输入新密码" : "Confirm new password"} /></label>
               </>
             )}
             {error && <p role="alert" className="rounded-xl bg-red-50 p-3 text-sm font-semibold text-red-600">{error}</p>}
@@ -109,18 +114,19 @@ export function PasswordRecoveryForm({
         )}
         <p className="mt-8 text-center text-sm text-slate-600">
           <Link href={`/${locale}/login`} className="font-extrabold text-brand-blue">{zh ? "返回登录" : "Back to sign in"}</Link>
+          {!forgot && <Link href={`/${locale}/forgot-password`} className="ml-4 font-extrabold text-brand-blue">{zh ? "重新获取重置链接" : "Request a new reset link"}</Link>}
         </p>
       </section>
     </main>
   );
 }
 
-function PasswordField({ name, label, show, onToggle }: { name: string; label: string; show: boolean; onToggle: () => void }) {
+function PasswordField({ name, label, show, zh, onToggle }: { name: string; label: string; show: boolean; zh: boolean; onToggle: () => void }) {
   return (
-    <label className="auth-field">
+    <label className="auth-field relative">
       <LockKeyhole />
-      <input required name={name} type={show ? "text" : "password"} minLength={8} autoComplete="new-password" placeholder={label} />
-      <button type="button" onClick={onToggle} aria-label={show ? "Hide password" : "Show password"}>{show ? <EyeOff /> : <Eye />}</button>
+      <input required name={name} type={show ? "text" : "password"} minLength={8} autoComplete="new-password" aria-label={label} placeholder={label} className="pr-10" />
+      <button type="button" onClick={onToggle} className="absolute right-2 top-1/2 grid min-h-11 min-w-11 -translate-y-1/2 place-items-center rounded-lg focus-visible:outline-2 focus-visible:outline-brand-blue" aria-label={show ? (zh ? "隐藏密码" : "Hide password") : (zh ? "显示密码" : "Show password")}>{show ? <EyeOff /> : <Eye />}</button>
     </label>
   );
 }

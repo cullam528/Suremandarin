@@ -12,7 +12,7 @@ import { Testimonials } from "@/components/Testimonials";
 import { isLocale, locales } from "@/lib/i18n";
 import { languagePaths } from "@/lib/content-seo";
 import { pageMetadata, seoCopy } from "@/lib/seo";
-import { getHomepageData } from "@/lib/strapi";
+import { getHomepageData, getHomepageSettings } from "@/lib/strapi";
 export async function generateStaticParams() {
   return [{ lang: "en" }, { lang: "zh" }];
 }
@@ -23,7 +23,7 @@ export async function generateMetadata({
 }): Promise<Metadata> {
   const { lang } = await params;
   if (!isLocale(lang)) return {};
-  const homes = await Promise.all(locales.map((locale) => getHomepageData(locale)));
+  const homes = await Promise.all(locales.map((locale) => getHomepageSettings(locale)));
   const d = homes[locales.indexOf(lang)];
   return pageMetadata({
     locale: lang,

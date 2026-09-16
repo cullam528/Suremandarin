@@ -1,12 +1,12 @@
 import { absoluteUrl, siteName } from "@/lib/seo";
-import { getHomepageData, getKnowledgeArticles, isIndexableArticle, knowledgeCategories, type KnowledgeCategorySlug } from "@/lib/strapi";
+import { getCourseCatalogData, getKnowledgeArticles, isIndexableArticle, knowledgeCategories, type KnowledgeCategorySlug } from "@/lib/strapi";
 
 export const revalidate = 3600;
 
 export async function GET() {
   const categories = Object.keys(knowledgeCategories) as KnowledgeCategorySlug[];
   const [home, groups] = await Promise.all([
-    getHomepageData("en"),
+    getCourseCatalogData("en").then((courses) => ({ courses })),
     Promise.all(categories.flatMap((category) => (["en", "zh"] as const).map(async (locale) => ({ locale, category, articles: (await getKnowledgeArticles(category, locale)).filter(isIndexableArticle) })))),
   ]);
   const body = `# ${siteName}

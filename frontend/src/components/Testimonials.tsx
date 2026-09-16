@@ -5,13 +5,6 @@ import { TestimonialSubmission } from "./TestimonialSubmission";
 import type { TestimonialData } from "@/lib/strapi";
 import type { Locale } from "@/lib/i18n";
 
-const testimonialPortraitByName: Record<string, string> = {
-  "Sophie Martin": "/images/testimonials/sophie-martin.png",
-  "Kevin Tan": "/images/testimonials/kevin-tan.png",
-  "Carla Rodriguez": "/images/testimonials/carla-rodriguez.png",
-  "Lucas Miller": "/images/testimonials/lucas-miller.png",
-};
-
 export function Testimonials({
   testimonials,
   title,
@@ -23,10 +16,8 @@ export function Testimonials({
   locale?: Locale;
   showSubmission?: boolean;
 }) {
-  const visibleTestimonials = testimonials.slice(0, 4).map((student) => ({
-    ...student,
-    image: testimonialPortraitByName[student.name] ?? student.image,
-  }));
+  const visibleTestimonials = testimonials.filter((student) => student.name.trim() && student.quote.trim()).slice(0, 4);
+  if (visibleTestimonials.length === 0 && !showSubmission) return null;
   return (
     <section id="testimonials" className="sm-home-testimonials py-24">
       <div className="page-shell">

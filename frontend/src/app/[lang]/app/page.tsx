@@ -4,6 +4,7 @@ import { AppShowcase } from "@/components/site/AppShowcase";
 import { SiteShell } from "@/components/site/SiteShell";
 import { isLocale } from "@/lib/i18n";
 import { pageMetadata } from "@/lib/seo";
+import { getGlobalData } from "@/lib/strapi";
 export async function generateMetadata({ params }: { params: Promise<{ lang: string }> }): Promise<Metadata> {
   const { lang } = await params;
   return isLocale(lang) ? pageMetadata({
@@ -20,9 +21,10 @@ export default async function AppPage({
 }) {
   const { lang } = await params;
   if (!isLocale(lang)) notFound();
+  const global = await getGlobalData(lang);
   return (
     <SiteShell locale={lang}>
-      <AppShowcase locale={lang} />
+      <AppShowcase locale={lang} settings={global} />
     </SiteShell>
   );
 }

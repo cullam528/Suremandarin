@@ -10,16 +10,13 @@ import {
   GraduationCap,
   Globe2,
   HeartHandshake,
-  Languages,
   Mail,
   MapPin,
   MessageCircleHeart,
   Phone,
   ShieldCheck,
-  Star,
   Target,
   UsersRound,
-  Video,
   type LucideIcon,
 } from "lucide-react";
 import type { Locale } from "@/lib/i18n";
@@ -31,10 +28,8 @@ type MarketingKind =
   | "teachers"
   | "faq"
   | "knowledge"
-  | "resources"
   | "app"
-  | "inquiry"
-  | "announcements";
+  | "inquiry";
 const copy = {
   about: {
     en: [
@@ -96,18 +91,6 @@ const copy = {
       "探索学习方法、学习技巧、中国文化和 SureMandarin 最新见解。",
     ],
   },
-  resources: {
-    en: [
-      "Learning Resources",
-      "Small resources. Meaningful progress.",
-      "Downloadable study guides, vocabulary practice, cultural notes, and useful routines for consistent learning.",
-    ],
-    zh: [
-      "学习资料",
-      "小小资料，也能带来持续进步。",
-      "获取学习指南、词汇练习、文化笔记和帮助你坚持学习的实用方法。",
-    ],
-  },
   app: {
     en: [
       "Learn Everywhere",
@@ -132,18 +115,6 @@ const copy = {
       "学习顾问会查看你的目标，并尽快与你联系。",
     ],
   },
-  announcements: {
-    en: [
-      "Announcements",
-      "What is happening at SureMandarin.",
-      "Keep up with new courses, learning events, community stories, and platform updates.",
-    ],
-    zh: [
-      "公告与活动",
-      "了解 SureMandarin 的最新动态。",
-      "查看新课程、学习活动、社区故事和平台更新。",
-    ],
-  },
 } as const;
 const icons = [BookOpen, Globe2, HeartHandshake, UsersRound];
 
@@ -158,17 +129,7 @@ export function MarketingPage({
   if (kind === "teachers") return <TeachersPageContent locale={locale} />;
   const zh = locale === "zh";
   const [label, title, intro] = copy[kind][locale];
-  const cards =
-    kind === "resources"
-      ? zh
-        ? ["学习指南", "词汇练习", "文化笔记", "学习计划模板"]
-        : [
-            "Study guides",
-            "Vocabulary practice",
-            "Culture notes",
-            "Learning plan templates",
-          ]
-      : zh
+  const cards = zh
         ? ["清晰的学习路径", "灵活的课程安排", "跨平台学习记录", "专业顾问支持"]
         : [
             "A clear learning path",
@@ -843,337 +804,100 @@ function AboutPageContent({ locale }: { locale: Locale }) {
 
 function TeachersPageContent({ locale }: { locale: Locale }) {
   const zh = locale === "zh";
-  const teachers = [
-    {
-      name: "Xinyi Chen",
-      role: zh ? "资深中文教师" : "Senior Mandarin Teacher",
-      location: zh ? "上海 · 线上" : "Shanghai · Online",
-      focus: zh ? "口语表达 · HSK" : "Conversation · HSK",
-      style: zh ? "耐心、结构清晰" : "Patient and structured",
-      initials: "XC",
-      image: true,
-      tone: "from-blue-100 via-cyan-50 to-white",
-    },
-    {
-      name: "David Liu",
-      role: zh ? "商务中文导师" : "Business Chinese Coach",
-      location: zh ? "北京 · 线上" : "Beijing · Online",
-      focus: zh ? "商务沟通 · 演讲" : "Business · Presentations",
-      style: zh ? "实用、目标导向" : "Practical and focused",
-      initials: "DL",
-      tone: "from-indigo-100 via-blue-50 to-white",
-    },
-    {
-      name: "Sophie Wang",
-      role: zh ? "IB 中文教师" : "IB Chinese Teacher",
-      location: zh ? "杭州 · 线上" : "Hangzhou · Online",
-      focus: zh ? "IB · 写作 · 阅读" : "IB · Writing · Reading",
-      style: zh ? "细致、反馈及时" : "Detailed and responsive",
-      initials: "SW",
-      tone: "from-violet-100 via-fuchsia-50 to-white",
-    },
-    {
-      name: "Anna Zhao",
-      role: zh ? "儿童中文教师" : "Children’s Chinese Teacher",
-      location: zh ? "成都 · 线上" : "Chengdu · Online",
-      focus: zh ? "儿童 · 游戏化学习" : "Kids · Play-based learning",
-      style: zh ? "活泼、善于鼓励" : "Playful and encouraging",
-      initials: "AZ",
-      tone: "from-amber-100 via-orange-50 to-white",
-    },
-    {
-      name: "Kevin Sun",
-      role: zh ? "发音与声调教练" : "Pronunciation Coach",
-      location: zh ? "广州 · 线上" : "Guangzhou · Online",
-      focus: zh ? "发音 · 声调 · 口语" : "Pronunciation · Tones · Speaking",
-      style: zh ? "精准、循序渐进" : "Precise and patient",
-      initials: "KS",
-      tone: "from-emerald-100 via-teal-50 to-white",
-    },
-    {
-      name: "Mia Lin",
-      role: zh ? "旅行中文导师" : "Travel Chinese Mentor",
-      location: zh ? "西安 · 线上" : "Xi’an · Online",
-      focus: zh ? "旅行 · 文化 · 会话" : "Travel · Culture · Conversation",
-      style: zh ? "真实、富有感染力" : "Real and engaging",
-      initials: "ML",
-      tone: "from-cyan-100 via-sky-50 to-white",
-    },
-    {
-      name: "Daniel Xu",
-      role: zh ? "初级中文导师" : "Beginner Mandarin Teacher",
-      location: zh ? "南京 · 线上" : "Nanjing · Online",
-      focus: zh ? "零基础 · 生活中文" : "Beginners · Daily Chinese",
-      style: zh ? "清晰、让人有安全感" : "Clear and reassuring",
-      initials: "DX",
-      tone: "from-slate-100 via-blue-50 to-white",
-    },
-    {
-      name: "Grace Hu",
-      role: zh ? "学术中文教师" : "Academic Chinese Teacher",
-      location: zh ? "苏州 · 线上" : "Suzhou · Online",
-      focus: zh ? "阅读 · 写作 · HSK" : "Reading · Writing · HSK",
-      style: zh ? "严谨、鼓励思考" : "Rigorous and thoughtful",
-      initials: "GH",
-      tone: "from-rose-100 via-pink-50 to-white",
-    },
-    {
-      name: "Leo Zhang",
-      role: zh ? "青少年中文教师" : "Teen Chinese Teacher",
-      location: zh ? "重庆 · 线上" : "Chongqing · Online",
-      focus: zh ? "青少年 · 考试准备" : "Teens · Exam preparation",
-      style: zh ? "亲和、节奏明快" : "Warm and energetic",
-      initials: "LZ",
-      tone: "from-lime-100 via-green-50 to-white",
-    },
-    {
-      name: "Emma Qiao",
-      role: zh ? "文化中文导师" : "Culture & Language Mentor",
-      location: zh ? "深圳 · 线上" : "Shenzhen · Online",
-      focus: zh ? "文化 · 真实交流" : "Culture · Real conversation",
-      style: zh ? "开放、连接感强" : "Open and connected",
-      initials: "EQ",
-      tone: "from-teal-100 via-cyan-50 to-white",
-    },
-  ];
-  const standards = zh
+  const matchingSteps = zh
     ? [
-        [ShieldCheck, "经过筛选与培训", "关注语言能力、教学经验和沟通方式。"],
-        [Video, "适应线上与线下", "熟悉互动课堂，让远程学习也有真实参与感。"],
-        [Star, "坚持课后反馈", "每次课后都留下清晰的下一步建议。"],
+        ["说说你的目标", "你是刚开始学中文，还是希望在工作、旅行或考试中用得更好？在咨询表单里告诉我们。"],
+        ["确认水平与时间", "填写当前中文水平、目标课程、时区和方便上课的时间。还不确定水平，可以先做免费测试。"],
+        ["一起确认课程安排", "学习顾问会根据你的需求沟通老师与课程安排。确认老师、时间和课程细节后，再决定如何开始。"],
       ]
     : [
-        [
-          ShieldCheck,
-          "Selected and supported",
-          "We look for language ability, teaching experience, and care in communication.",
-        ],
-        [
-          Video,
-          "Ready for real classrooms",
-          "Teachers know how to make online and in-person lessons feel interactive.",
-        ],
-        [
-          Star,
-          "Feedback after every lesson",
-          "Learners leave each class with a clear and useful next step.",
-        ],
+        ["Tell us your goal", "Starting from zero, speaking at work, preparing for an exam or travelling in China? Share what you want to do in Chinese."],
+        ["Share your level and schedule", "Include your current level, preferred course, time zone and available times. If you are unsure of your level, start with the free assessment."],
+        ["Agree on the lesson plan", "An advisor will discuss a teacher and course arrangement with you. Confirm the teacher, schedule and lesson details before deciding how to begin."],
       ];
+
   return (
     <>
-      <section className="soft-gradient overflow-hidden py-16 sm:py-24 lg:py-28">
-        <div className="page-shell grid gap-12 lg:grid-cols-[1.05fr_.95fr] lg:items-center lg:gap-20">
+      <section className="soft-gradient py-16 sm:py-24">
+        <div className="page-shell grid gap-10 lg:grid-cols-[1.1fr_.9fr] lg:items-center lg:gap-16">
           <div>
-            <p className="section-kicker">
-              {zh ? "教师团队 · 示例阵容" : "Our teachers · Example team"}
-            </p>
-            <h1 className="mt-4 max-w-3xl text-4xl font-extrabold leading-[1.06] tracking-[-.055em] text-brand-navy sm:text-6xl">
-              {zh
-                ? "找到一位真正适合你的中文老师。"
-                : "Meet the teacher who makes Chinese feel possible."}
+            <p className="section-kicker">{zh ? "中文老师 · 学习匹配" : "Your teacher. Your learning path."}</p>
+            <h1 className="mt-4 text-4xl font-extrabold leading-tight tracking-[-.045em] text-brand-navy sm:text-6xl">
+              {zh ? "认识 Jessica，从你的中文目标开始。" : "Meet Jessica. Start with your Chinese goals."}
             </h1>
             <p className="mt-6 max-w-2xl text-base leading-8 text-slate-600 sm:text-lg">
               {zh
-                ? "每位学习者都有不同的目标、节奏和故事。SureMandarin 用专业背景、清晰方法和真诚的陪伴，帮你找到合适的学习伙伴。"
-                : "Every learner brings a different goal, pace, and story. SureMandarin combines expertise, clear methods, and genuine care to help you find the right learning partner."}
+                ? "SureMandarin 创始人 Jessica 自 2007 年起教授中文，学员来自 25 个以上国家。选择课程时，不只看课程名称，也要看你想用中文完成什么，以及什么样的学习节奏适合你。"
+                : "Jessica, the founder of SureMandarin, has taught Mandarin since 2007 to learners from over 25 countries. Choosing a course starts with what you want to do in Chinese and the learning pace that fits your life."}
             </p>
-            <div className="mt-9 flex flex-wrap gap-3">
-              <a
-                href="#teachers"
-                className="brand-gradient inline-flex items-center gap-2 rounded-xl px-5 py-3.5 text-sm font-extrabold text-white shadow-lg shadow-blue-200"
-              >
-                {zh ? "查看教师阵容" : "Explore the team"}
-                <ArrowRight size={17} />
-              </a>
+            <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:flex-wrap">
               <Link
-                href={`/${locale}/contact`}
-                className="inline-flex items-center gap-2 rounded-xl border border-brand-blue bg-white px-5 py-3.5 text-sm font-extrabold text-brand-blue"
+                href={`/${locale}/contact#consultation`}
+                className="brand-gradient inline-flex min-h-12 items-center justify-center gap-2 rounded-xl px-6 py-3.5 text-sm font-extrabold text-white shadow-lg shadow-blue-200"
               >
-                {zh ? "咨询匹配建议" : "Ask for a match"}
-                <ArrowUpRight size={17} />
+                {zh ? "咨询老师与课程安排" : "Discuss a teacher and course"}
+                <ArrowRight size={17} aria-hidden="true" />
+              </Link>
+              <Link
+                href={`/${locale}/about#founder`}
+                className="inline-flex min-h-12 items-center justify-center gap-2 rounded-xl border border-brand-blue bg-white px-6 py-3.5 text-sm font-extrabold text-brand-blue"
+              >
+                {zh ? "了解 SureMandarin" : "About SureMandarin"}
+                <ArrowUpRight size={17} aria-hidden="true" />
               </Link>
             </div>
-            <div className="mt-12 grid max-w-xl grid-cols-3 gap-5 border-t border-brand-line pt-6">
-              {[
-                ["10", zh ? "示例教师" : "sample teachers"],
-                ["1:1", zh ? "个性化匹配" : "personal matching"],
-                ["∞", zh ? "持续反馈" : "ongoing feedback"],
-              ].map(([number, label]) => (
-                <div key={number}>
-                  <p className="text-2xl font-extrabold text-brand-blue">
-                    {number}
-                  </p>
-                  <p className="mt-1 text-xs font-semibold leading-5 text-slate-500">
-                    {label}
-                  </p>
-                </div>
-              ))}
-            </div>
+            <p className="mt-5 max-w-xl text-sm leading-6 text-slate-500">
+              {zh
+                ? "老师与时间安排以顾问确认结果为准；提交咨询不代表已预约成功。"
+                : "Teacher availability and lesson times are confirmed by an advisor. Sending an enquiry does not reserve a lesson."}
+            </p>
           </div>
-          <div className="relative mx-auto w-full max-w-xl">
-            <div className="absolute -inset-4 rounded-[2.25rem] bg-brand-navy/[.04]" />
-            <div className="relative overflow-hidden rounded-[2rem] border border-brand-line bg-white p-2 shadow-2xl shadow-blue-900/10">
-              <Image
-                src="/course-detail/images/teacher-xinyi.webp"
-                alt={
-                  zh
-                    ? "SureMandarin 资深中文教师工作照"
-                    : "SureMandarin senior Mandarin teacher at work"
-                }
-                width={1280}
-                height={1280}
-                priority
-                className="aspect-[4/5] w-full rounded-[1.5rem] object-cover object-top"
-              />
-              <div className="absolute bottom-6 left-6 right-6 flex items-end justify-between rounded-2xl border border-white/50 bg-white/90 p-4 backdrop-blur-md">
-                <div>
-                  <p className="text-[10px] font-extrabold uppercase tracking-[.18em] text-brand-blue">
-                    {zh ? "重点教师" : "Featured teacher"}
-                  </p>
-                  <p className="mt-1 font-extrabold text-brand-navy">
-                    Xinyi · {zh ? "资深中文教师" : "Senior Mandarin Teacher"}
-                  </p>
-                </div>
-                <span className="grid size-10 place-items-center rounded-full bg-brand-navy text-cyan-200">
-                  <Languages size={18} />
-                </span>
-              </div>
-            </div>
-          </div>
+          <figure className="mx-auto w-full max-w-lg overflow-hidden rounded-[2rem] border border-brand-line bg-white shadow-xl shadow-blue-900/10">
+            <Image
+              src="/course-detail/images/teacher-jessica.webp"
+              alt={zh ? "SureMandarin 创始人、中文老师 Jessica" : "Jessica, founder and Mandarin teacher at SureMandarin"}
+              width={1280}
+              height={1280}
+              sizes="(min-width: 1024px) 42vw, (min-width: 640px) 512px, 100vw"
+              priority
+              className="aspect-[4/5] w-full object-cover object-top"
+            />
+            <figcaption className="border-t border-brand-line p-6 sm:p-7">
+              <p className="text-xs font-extrabold uppercase tracking-[.15em] text-brand-blue">{zh ? "创始人 · 中文老师" : "Founder · Mandarin teacher"}</p>
+              <h2 className="mt-2 text-2xl font-extrabold text-brand-navy">Jessica</h2>
+              <p className="mt-2 text-sm leading-6 text-slate-600">{zh ? "2007 年起教授中文 · 学员来自 25+ 个国家" : "Teaching Mandarin since 2007 · Learners from 25+ countries"}</p>
+            </figcaption>
+          </figure>
         </div>
       </section>
 
-      <section id="teachers" className="bg-white py-20 sm:py-28">
+      <section className="bg-white py-16 sm:py-24" aria-labelledby="teacher-matching">
         <div className="page-shell">
-          <div className="flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between">
-            <div className="max-w-2xl">
-              <p className="section-kicker">
-                {zh ? "10 位示例教师" : "10 example teachers"}
-              </p>
-              <h2 className="mt-4 text-3xl font-extrabold tracking-[-.04em] text-brand-navy sm:text-5xl">
-                {zh
-                  ? "专业方向不同，但认真程度相同。"
-                  : "Different specialties. The same level of care."}
-              </h2>
+          <div className="max-w-3xl">
+            <p className="section-kicker">{zh ? "如何开始" : "How to get started"}</p>
+            <h2 id="teacher-matching" className="mt-4 text-3xl font-extrabold tracking-[-.035em] text-brand-navy sm:text-4xl">
+              {zh ? "先了解你，再讨论合适的老师。" : "First, we get to know you."}
+            </h2>
+            <p className="mt-4 text-base leading-8 text-slate-600">
+              {zh ? "无需在一排不熟悉的老师中盲选。用一次咨询，把学习目标、时间与课程需求说清楚。" : "You do not need to choose from unfamiliar profiles. Use a consultation to discuss your goals, schedule and course preferences."}
+            </p>
+          </div>
+          <ol className="mt-10 grid gap-5 md:grid-cols-3">
+            {matchingSteps.map(([title, text], index) => (
+              <li key={title} className="rounded-2xl border border-brand-line bg-brand-soft/50 p-6 sm:p-8">
+                <span className="text-sm font-extrabold text-brand-blue">{zh ? `第 ${index + 1} 步` : `Step ${index + 1}`}</span>
+                <h3 className="mt-4 text-xl font-extrabold text-brand-navy">{title}</h3>
+                <p className="mt-3 text-sm leading-7 text-slate-600">{text}</p>
+              </li>
+            ))}
+          </ol>
+          <div className="mt-8 flex flex-col gap-4 border-t border-brand-line pt-6 sm:flex-row sm:items-center sm:justify-between">
+            <p className="text-sm leading-6 text-slate-600">{zh ? "还不确定从哪里开始？先了解课程，或测一测当前水平。" : "Not sure where to begin? Explore the courses or check your current level."}</p>
+            <div className="flex shrink-0 flex-wrap gap-5">
+              <Link href={`/${locale}/courses`} className="inline-flex items-center gap-2 text-sm font-bold text-brand-blue hover:underline">{zh ? "查看课程" : "Explore courses"}<ArrowRight size={15} aria-hidden="true" /></Link>
+              <Link href={`/${locale}/level-test`} className="inline-flex items-center gap-2 text-sm font-bold text-brand-blue hover:underline">{zh ? "免费水平测试" : "Free level assessment"}<ArrowRight size={15} aria-hidden="true" /></Link>
             </div>
-            <p className="max-w-sm text-sm leading-7 text-slate-500">
-              {zh
-                ? "以下为教师团队展示示例，实际匹配会根据你的学习目标、时间和水平进行。"
-                : "These profiles show the range of our teaching team. Your match is based on your goals, schedule, and level."}
-            </p>
           </div>
-          <div className="mt-12 grid gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
-            {teachers.map((teacher) => (
-              <article
-                key={teacher.name}
-                className="group overflow-hidden rounded-2xl border border-brand-line bg-white shadow-sm transition hover:-translate-y-1 hover:shadow-xl"
-              >
-                <div
-                  className={`relative aspect-[4/4.5] overflow-hidden bg-gradient-to-br ${teacher.tone}`}
-                >
-                  {teacher.image ? (
-                    <Image
-                      src="/course-detail/images/teacher-xinyi.webp"
-                      alt={teacher.name}
-                      width={640}
-                      height={720}
-                      className="h-full w-full object-cover object-top transition duration-500 group-hover:scale-105"
-                    />
-                  ) : (
-                    <div className="grid h-full place-items-center">
-                      <span className="grid size-24 place-items-center rounded-full border-8 border-white/70 bg-brand-navy text-2xl font-extrabold text-cyan-200 shadow-xl">
-                        {teacher.initials}
-                      </span>
-                    </div>
-                  )}
-                  <span className="absolute left-3 top-3 rounded-full border border-white/70 bg-white/85 px-2.5 py-1 text-[10px] font-extrabold text-brand-navy backdrop-blur">
-                    {zh ? "可预约" : "Available"}
-                  </span>
-                </div>
-                <div className="p-5">
-                  <h3 className="font-extrabold text-brand-navy">
-                    {teacher.name}
-                  </h3>
-                  <p className="mt-1 text-xs font-bold text-brand-blue">
-                    {teacher.role}
-                  </p>
-                  <div className="mt-4 grid gap-2 text-xs text-slate-500">
-                    <span className="flex items-center gap-2">
-                      <MapPin size={14} className="text-brand-green" />
-                      {teacher.location}
-                    </span>
-                    <span className="flex items-center gap-2">
-                      <Languages size={14} className="text-brand-green" />
-                      {teacher.focus}
-                    </span>
-                  </div>
-                  <p className="mt-4 border-t border-brand-line pt-3 text-xs font-semibold text-slate-600">
-                    {teacher.style}
-                  </p>
-                </div>
-              </article>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      <section className="bg-slate-50 py-20 sm:py-28">
-        <div className="page-shell">
-          <div className="max-w-2xl">
-            <p className="section-kicker">
-              {zh ? "我们如何选择老师" : "How we support teachers"}
-            </p>
-            <h2 className="mt-4 text-3xl font-extrabold tracking-[-.04em] text-brand-navy sm:text-5xl">
-              {zh
-                ? "好老师，既有专业，也有责任感。"
-                : "Great teachers bring expertise and responsibility."}
-            </h2>
-          </div>
-          <div className="mt-12 grid gap-4 md:grid-cols-3">
-            {standards.map(([Icon, title, text]) => (
-              <article
-                key={String(title)}
-                className="rounded-2xl border border-brand-line bg-white p-7 shadow-sm"
-              >
-                <span className="grid size-12 place-items-center rounded-2xl bg-brand-soft text-brand-blue">
-                  <Icon size={23} />
-                </span>
-                <h3 className="mt-5 font-extrabold text-brand-navy">
-                  {String(title)}
-                </h3>
-                <p className="mt-3 text-sm leading-7 text-slate-600">
-                  {String(text)}
-                </p>
-              </article>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      <section className="soft-gradient py-20 sm:py-24">
-        <div className="page-shell flex flex-col gap-6 rounded-[2rem] border border-brand-line bg-white/80 p-8 shadow-xl shadow-blue-900/5 sm:p-12 lg:flex-row lg:items-center lg:justify-between">
-          <div>
-            <p className="section-kicker">
-              {zh ? "找到你的学习伙伴" : "Find your learning partner"}
-            </p>
-            <h2 className="mt-3 text-3xl font-extrabold tracking-[-.04em] text-brand-navy sm:text-4xl">
-              {zh
-                ? "让一次匹配，成为长期进步的开始。"
-                : "Let one thoughtful match become long-term progress."}
-            </h2>
-            <p className="mt-3 max-w-2xl leading-7 text-slate-600">
-              {zh
-                ? "告诉我们你的目标和时间安排，学习顾问会为你推荐合适的老师与课程。"
-                : "Share your goals and schedule. A learning advisor will recommend the right teacher and course for you."}
-            </p>
-          </div>
-          <Link
-            href={`/${locale}/contact`}
-            className="brand-gradient inline-flex shrink-0 items-center justify-center gap-2 rounded-xl px-6 py-3.5 font-extrabold text-white shadow-lg shadow-blue-200"
-          >
-            {zh ? "开始匹配" : "Start matching"}
-            <ArrowRight size={17} />
-          </Link>
         </div>
       </section>
     </>

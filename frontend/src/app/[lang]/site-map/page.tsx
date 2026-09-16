@@ -5,7 +5,7 @@ import { SiteShell } from "@/components/site/SiteShell";
 import { isLocale } from "@/lib/i18n";
 import { pageMetadata } from "@/lib/seo";
 import { publicPages } from "@/lib/site-pages";
-import { getHomepageData, getKnowledgeArticles, isIndexableArticle, knowledgeCategories, type KnowledgeCategorySlug } from "@/lib/strapi";
+import { getCourseCatalogData, getKnowledgeArticles, isIndexableArticle, knowledgeCategories, type KnowledgeCategorySlug } from "@/lib/strapi";
 
 export async function generateMetadata({ params }: { params: Promise<{ lang: string }> }): Promise<Metadata> {
   const { lang } = await params;
@@ -16,7 +16,7 @@ export default async function SiteMapPage({ params }: { params: Promise<{ lang: 
   const { lang } = await params;
   if (!isLocale(lang)) notFound();
   const categories = Object.keys(knowledgeCategories) as KnowledgeCategorySlug[];
-  const [home, groups] = await Promise.all([getHomepageData(lang), Promise.all(categories.map(async (category) => ({ category, articles: (await getKnowledgeArticles(category, lang)).filter(isIndexableArticle) })))]);
+  const [home, groups] = await Promise.all([getCourseCatalogData(lang).then((courses) => ({ courses })), Promise.all(categories.map(async (category) => ({ category, articles: (await getKnowledgeArticles(category, lang)).filter(isIndexableArticle) })))]);
   return <SiteShell locale={lang}>
     <section className="page-shell py-16 sm:py-24">
       <h1 className="text-4xl font-extrabold text-brand-navy">{lang === "zh" ? "网站地图" : "Site map"}</h1>

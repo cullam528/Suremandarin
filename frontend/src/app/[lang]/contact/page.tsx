@@ -5,7 +5,7 @@ import { CourseConsultation } from "@/components/site/CourseConsultation";
 import { MarketingPage } from "@/components/site/MarketingPage";
 import { SiteShell } from "@/components/site/SiteShell";
 import { isLocale } from "@/lib/i18n";
-import { getHomepageData } from "@/lib/strapi";
+import { getCourseCatalogData, getGlobalData } from "@/lib/strapi";
 import { absoluteUrl, breadcrumbStructuredData, pageMetadata } from "@/lib/seo";
 import { StructuredData } from "@/components/seo/StructuredData";
 export async function generateMetadata({ params }: { params: Promise<{ lang: string }> }): Promise<Metadata> {
@@ -24,7 +24,7 @@ export default async function ContactPage({
 }) {
   const { lang } = await params;
   if (!isLocale(lang)) notFound();
-  const data = await getHomepageData(lang);
+  const [courses, global] = await Promise.all([getCourseCatalogData(lang), getGlobalData(lang)]);
   return (
     <SiteShell locale={lang}>
       <StructuredData data={[
@@ -34,14 +34,14 @@ export default async function ContactPage({
       <MarketingPage kind="contact" locale={lang} />
       <div className="page-shell pb-16 sm:pb-24">
         <CourseConsultation
-          courses={data.courses}
+          courses={courses}
           locale={lang}
           sourcePage={`/${lang}/contact`}
           campaign="contact-consultation"
           leadSource="contact-page"
         />
       </div>
-      <AppShowcase locale={lang} settings={data.global} headingLevel={2} />
+      <AppShowcase locale={lang} settings={global} headingLevel={2} />
     </SiteShell>
   );
 }

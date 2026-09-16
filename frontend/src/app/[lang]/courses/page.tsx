@@ -5,7 +5,7 @@ import { StructuredData } from "@/components/seo/StructuredData";
 import { SiteShell } from "@/components/site/SiteShell";
 import { isLocale } from "@/lib/i18n";
 import { absoluteUrl, breadcrumbStructuredData, pageMetadata } from "@/lib/seo";
-import { getHomepageData } from "@/lib/strapi";
+import { getCourseCatalogData } from "@/lib/strapi";
 export async function generateMetadata({
   params,
 }: {
@@ -34,7 +34,7 @@ export default async function CoursesPage({
 }) {
   const { lang } = await params;
   if (!isLocale(lang)) notFound();
-  const data = await getHomepageData(lang);
+  const courses = await getCourseCatalogData(lang);
   return (
     <SiteShell locale={lang}>
       <StructuredData
@@ -43,7 +43,7 @@ export default async function CoursesPage({
             "@context": "https://schema.org",
             "@type": "ItemList",
             name: lang === "zh" ? "SureMandarin 中文培训课程" : "SureMandarin Chinese courses",
-            itemListElement: data.courses.map((course, index) => ({
+            itemListElement: courses.map((course, index) => ({
               "@type": "ListItem",
               position: index + 1,
               item: {
@@ -61,7 +61,7 @@ export default async function CoursesPage({
           ]),
         ]}
       />
-      <CourseCatalog courses={data.courses} locale={lang} />
+      <CourseCatalog courses={courses} locale={lang} />
     </SiteShell>
   );
 }

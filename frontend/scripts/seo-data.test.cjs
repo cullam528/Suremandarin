@@ -19,7 +19,7 @@ function source(name) {
   return compiled.get(name);
 }
 
-function loader({ courses = {}, articles = {}, homes = {}, failPath, overrideStatus = 200, guardedArticleApi = false } = {}) {
+function loader({ courses = {}, articles = {}, homes = {}, testimonials = {}, failPath, overrideStatus = 200, guardedArticleApi = false } = {}) {
   const modules = new Map();
   const requests = [];
   const cache = (fn) => {
@@ -53,7 +53,7 @@ function loader({ courses = {}, articles = {}, homes = {}, failPath, overrideSta
       data = [...new Set((articles[locale] || []).filter((record) => known.has(record.slug)).map((record) => record.slug))];
     } else if (url.pathname === '/api/home-page') data = homes[locale] || null;
     else if (url.pathname === '/api/global-setting') data = null;
-    else if (url.pathname === '/api/testimonials') data = [];
+    else if (url.pathname === '/api/testimonials') data = testimonials[locale] || [];
     else throw new Error(`Unexpected request: ${url.pathname}`);
     return { ok: true, status: 200, json: async () => ({ data, meta }) };
   };
@@ -94,6 +94,57 @@ function article(slug, overrides = {}) {
     ...overrides,
   };
 }
+
+test('course-only catalog stays independent of article outages and reuses cached records', async () => {
+  const { api, requests } = loader({ courses: { en: [course('private-course')] }, failPath: '/api/articles' });
+  const first = await api.getCourseCatalogData('en');
+  const second = await api.getCourseCatalogData('en');
+  assert.equal(first, second);
+  assert.equal(first[0].slug, 'private-course');
+  assert.deepEqual(requests.map((url) => url.pathname), ['/api/courses']);
+});
+
+test('course detail reads course/global/testimonial data without pulling home or article content', async () => {
+  const { api, requests } = loader({ courses: { en: [course('private-course')] }, failPath: '/api/articles' });
+  const detail = await api.getCourseDetailData('private-course', 'en');
+  assert.equal(detail.course.slug, 'private-course');
+  assert.deepEqual(requests.map((url) => url.pathname).sort(), ['/api/courses', '/api/global-setting', '/api/testimonials']);
+});
+
+test('home SEO/settings reads only the home endpoint; contact-style course/global reads stay isolated', async () => {
+  const settingsFixture = loader({ homes: { en: { pageTitle: 'Editor title' } }, failPath: '/api/articles' });
+  assert.equal((await settingsFixture.api.getHomepageSettings('en')).pageTitle, 'Editor title');
+  assert.deepEqual(settingsFixture.requests.map((url) => url.pathname), ['/api/home-page']);
+  const contactFixture = loader({ failPath: '/api/articles' });
+  await Promise.all([contactFixture.api.getCourseCatalogData('en'), contactFixture.api.getGlobalData('en')]);
+  assert.deepEqual(contactFixture.requests.map((url) => url.pathname).sort(), ['/api/courses', '/api/global-setting']);
+});
+
+test('homepage requests only four category-cover fields instead of the paginated article bodies', async () => {
+  const { api, requests } = loader();
+  const data = await api.getHomepageData('en');
+  assert.equal(data.articles.length, 4);
+  const articleRequests = requests.filter((url) => url.pathname === '/api/articles');
+  assert.equal(articleRequests.length, 1);
+  const params = articleRequests[0].searchParams;
+  assert.equal(params.get('pagination[pageSize]'), '4');
+  assert.equal(params.get('fields[0]'), 'slug');
+  assert.equal(params.get('fields[1]'), 'imageAlt');
+  assert.equal(params.get('populate[cover]'), 'true');
+  assert.equal(params.has('populate[category]'), false);
+  assert.equal(params.has('populate[seo][populate]'), false);
+  assert.equal([...params.keys()].filter((key) => key.startsWith('filters[slug][$in]')).length, 4);
+});
+
+test('testimonial-only reads do not fabricate reviews or default an unknown verification to true', async () => {
+  const empty = loader({ failPath: '/api/articles' });
+  assert.equal((await empty.api.getTestimonialsData('en')).length, 0);
+  assert.deepEqual(empty.requests.map((url) => url.pathname), ['/api/testimonials']);
+  const populated = loader({ testimonials: { en: [{ documentId: 'student-review', studentName: 'Real Student', quote: 'My experience.', rating: 4 }] } });
+  const result = await populated.api.getTestimonialsData('en');
+  assert.equal(result[0].name, 'Real Student');
+  assert.equal(result[0].verified, false);
+});
 
 test('empty or entirely disabled catalogs do not resurrect six default courses', async () => {
   for (const courses of [{}, { en: [course('private-course', { enabled: false })], zh: [] }]) {

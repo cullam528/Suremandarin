@@ -1,44 +1,47 @@
 import Image from "next/image";
+import Link from "next/link";
 import type { GlobalData } from "@/lib/strapi";
 import type { Locale } from "@/lib/i18n";
 import { LanguageSwitcher } from "@/components/LanguageSwitcher";
 const columns = [
   {
-    title: "Explore",
-    links: ["Home", "Courses", "Daily", "Level Test", "Pricing", "Referral Program", "Knowledge Center", "They Say", "Teachers"],
+    title: { en: "Explore", zh: "探索" },
+    links: [
+      { path: "", en: "Home", zh: "首页" },
+      { path: "/courses", en: "Courses", zh: "课程" },
+      { path: "/daily", en: "Daily", zh: "7 天挑战" },
+      { path: "/level-test", en: "Level Test", zh: "水平测试" },
+      { path: "/pricing", en: "Membership", zh: "会员方案" },
+      { path: "/referral", en: "Referral Program", zh: "推荐计划" },
+      { path: "/knowledge", en: "Knowledge Center", zh: "知识中心" },
+      { path: "/theysay", en: "They Say", zh: "学员评价" },
+      { path: "/teachers", en: "Teachers", zh: "教师介绍" },
+    ],
   },
   {
-    title: "Support",
-    links: ["Help Center", "Study Guide", "FAQ", "Contact Us", "Site Map"],
+    title: { en: "Support", zh: "支持" },
+    links: [
+      { path: "/faq", en: "Help & FAQ", zh: "帮助与常见问题" },
+      { path: "/contact", en: "Contact Us", zh: "联系我们" },
+      { path: "/app", en: "Learn on your phone", zh: "手机端学习" },
+      { path: "/site-map", en: "Site Map", zh: "网站地图" },
+    ],
   },
   {
-    title: "Company",
-    links: ["About Us", "Careers", "Partners", "Newsroom", "Privacy Policy"],
+    title: { en: "Company", zh: "公司" },
+    links: [
+      { path: "/about", en: "About Us", zh: "关于我们" },
+      { path: "/about#training-centers", en: "Training Centers", zh: "培训中心" },
+      { path: "/knowledge/news-and-insights", en: "News & Insights", zh: "新闻与见解" },
+    ],
   },
-];
-const zhColumns = [
-  {
-    title: "探索",
-    links: ["首页", "课程", "7天挑战", "水平测试", "会员方案", "推荐计划", "知识中心", "学员评价", "教师团队"],
-  },
-  {
-    title: "支持",
-    links: ["帮助中心", "学习指南", "常见问题", "联系我们", "网站地图"],
-  },
-  {
-    title: "公司",
-    links: ["关于我们", "加入我们", "合作伙伴", "新闻中心", "隐私政策"],
-  },
-];
-const socialLinks = [
-  {
-    label: "小红书 / Xiaohongshu",
-    image: "/images/xiaohongshu.webp",
-    href: "https://xhslink.cn/m/5k2RxYiaMts",
-  },
-  { label: "LinkedIn", image: "/images/linkedin.webp", href: "https://linkedin.com/in/想（jessica-li-889b483b" },
-  { label: "YouTube", image: "/images/youtube.webp", href: "https://www.youtube.com/@Suremandarin" },
-  { label: "X", image: "/images/x.webp", href: "https://x.com/JessSuremanda" },
+] as const;
+const socialDefinitions = [
+  { key: "xiaohongshu", label: "小红书 / Xiaohongshu", image: "/images/xiaohongshu.webp", href: "https://xhslink.cn/m/5k2RxYiaMts" },
+  // LinkedIn is shown only when a valid profile is configured in the CMS.
+  { key: "linkedin", label: "LinkedIn", image: "/images/linkedin.webp", href: "" },
+  { key: "youtube", label: "YouTube", image: "/images/youtube.webp", href: "https://www.youtube.com/@Suremandarin" },
+  { key: "x", label: "X", image: "/images/x.webp", href: "https://x.com/JessSuremanda" },
 ];
 const socialAssetVersion = "20260811";
 export function Footer({
@@ -50,54 +53,22 @@ export function Footer({
   locale?: Locale;
   languageUrls?: Partial<Record<Locale, string>>;
 }) {
-  const footerColumns = locale === "zh" ? zhColumns : columns;
-  const footerHref = (link: string) => {
-    const routes: Record<string, string> =
-      locale === "zh"
-        ? {
-            首页: `/${locale}#home`,
-            课程: `/${locale}/courses`,
-            "7天挑战": `/${locale}/daily`,
-            水平测试: `/${locale}/level-test`,
-            会员方案: `/${locale}/pricing`,
-            推荐计划: `/${locale}/referral`,
-            知识中心: `/${locale}/knowledge`,
-            学员评价: `/${locale}/theysay`,
-            教师团队: `/${locale}/teachers`,
-            帮助中心: `/${locale}/faq`,
-            学习指南: `/${locale}/knowledge`,
-            常见问题: `/${locale}/faq`,
-            联系我们: `/${locale}/contact`,
-            网站地图: `/${locale}/site-map`,
-            关于我们: `/${locale}/about`,
-            加入我们: `/${locale}/about`,
-            合作伙伴: `/${locale}/contact`,
-            新闻中心: `/${locale}/knowledge/news-and-insights`,
-            隐私政策: `/${locale}/privacy`,
-          }
-        : {
-            Home: `/${locale}#home`,
-            Courses: `/${locale}/courses`,
-            Daily: `/${locale}/daily`,
-            "Level Test": `/${locale}/level-test`,
-            Pricing: `/${locale}/pricing`,
-            "Referral Program": `/${locale}/referral`,
-            "Knowledge Center": `/${locale}/knowledge`,
-            "They Say": `/${locale}/theysay`,
-            Teachers: `/${locale}/teachers`,
-            "Help Center": `/${locale}/faq`,
-            "Study Guide": `/${locale}/knowledge`,
-            FAQ: `/${locale}/faq`,
-            "Contact Us": `/${locale}/contact`,
-            "Site Map": `/${locale}/site-map`,
-            "About Us": `/${locale}/about`,
-            Careers: `/${locale}/about`,
-            Partners: `/${locale}/contact`,
-            Newsroom: `/${locale}/knowledge/news-and-insights`,
-            "Privacy Policy": `/${locale}/privacy`,
-          };
-    return routes[link] ?? `/${locale}`;
-  };
+  const footerColumns = columns.map((column) => ({
+    title: column.title[locale],
+    links: column.links.map((link) => ({ label: link[locale], href: `/${locale}${link.path}` })),
+  }));
+  const socialLinks = socialDefinitions.flatMap((social) => {
+    const configured = settings.socialLinks.find((item) => item.platform.trim().toLowerCase() === social.key);
+    const href = configured?.url.trim() || social.href;
+    try {
+      const url = new URL(href);
+      if (!["http:", "https:"].includes(url.protocol) || url.username || url.password) return [];
+      if (social.key === "linkedin" && (!["linkedin.com", "www.linkedin.com"].includes(url.hostname) || !/^[/](in|company)[/][a-zA-Z0-9-]+[/]?$/.test(url.pathname))) return [];
+      return [{ ...social, href: url.href }];
+    } catch {
+      return [];
+    }
+  });
   return (
     <footer id="about" className="sm-site-footer bg-brand-navy text-white">
       <div className="sm-site-footer-grid page-shell grid gap-10 py-16 sm:grid-cols-2 lg:grid-cols-[1.5fr_repeat(3,1fr)_1fr]">
@@ -118,6 +89,8 @@ export function Footer({
                 <a
                   key={social.label}
                   href={social.href}
+                  target="_blank"
+                  rel="noopener noreferrer"
                   aria-label={social.label}
                   title={social.label}
                   className="transition-opacity hover:opacity-75"
@@ -140,7 +113,7 @@ export function Footer({
           </p>
           <div className="mt-5 hidden items-center gap-3 lg:flex">
             {socialLinks.map((social) => (
-              <a key={social.label} href={social.href} aria-label={social.label} title={social.label} className="transition-opacity hover:opacity-75">
+              <a key={social.label} href={social.href} target="_blank" rel="noopener noreferrer" aria-label={social.label} title={social.label} className="transition-opacity hover:opacity-75">
                 <Image src={`${social.image}?v=${socialAssetVersion}`} alt="" width={36} height={36} className="size-9 object-contain" />
               </a>
             ))}
@@ -150,13 +123,14 @@ export function Footer({
           <nav key={column.title} aria-label={column.title} className="sm-footer-column hidden lg:block">
             <h2 className="mb-4 text-sm font-bold">{column.title}</h2>
             {column.links.map((link) => (
-              <a
-                key={link}
-                href={footerHref(link)}
+              <Link
+                key={link.href}
+                href={link.href}
+                prefetch={false}
                 className="mb-2 block text-xs text-slate-300 hover:text-white"
               >
-                {link}
-              </a>
+                {link.label}
+              </Link>
             ))}
           </nav>
         ))}
@@ -165,7 +139,7 @@ export function Footer({
             <summary>{column.title}<span aria-hidden="true">+</span></summary>
             <div className="sm-footer-accordion-links">
               {column.links.map((link) => (
-                <a key={link} href={footerHref(link)}>{link}</a>
+                <Link key={link.href} href={link.href} prefetch={false}>{link.label}</Link>
               ))}
             </div>
           </details>
@@ -202,17 +176,17 @@ export function Footer({
         <LanguageSwitcher locale={locale} languageUrls={languageUrls} />
         <p>{settings.copyright}</p>
         <p>
-          <a href={`/${locale}/terms`}>
+          <Link href={`/${locale}/terms`} prefetch={false}>
             {locale === "zh" ? "使用条款" : "Terms of Use"}
-          </a>{" "}
+          </Link>{" "}
           ·{" "}
-          <a href={`/${locale}/privacy`}>
+          <Link href={`/${locale}/privacy`} prefetch={false}>
             {locale === "zh" ? "隐私政策" : "Privacy Policy"}
-          </a>{" "}
+          </Link>{" "}
           ·{" "}
-          <a href={`/${locale}/cookies`}>
+          <Link href={`/${locale}/cookies`} prefetch={false}>
             {locale === "zh" ? "Cookie 政策" : "Cookie Policy"}
-          </a>
+          </Link>
         </p>
       </div>
     </footer>

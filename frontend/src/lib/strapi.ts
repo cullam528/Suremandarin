@@ -502,40 +502,7 @@ const fallback: HomepageData = {
     imageAlt: `${title} editorial cover`,
   })),
   testimonialSectionTitle: "Loved by Learners Worldwide",
-  testimonials: [
-    [
-      "Sophie Martin",
-      "France",
-      "SureMandarin teachers are patient and inspiring. My Chinese has improved so much!",
-    ],
-    [
-      "Kevin Tan",
-      "Singapore",
-      "The classes are well-structured and practical. I use what I learn every day.",
-    ],
-    [
-      "Carla Rodriguez",
-      "Mexico",
-      "I love the cultural lessons and travel experiences. They make learning fun.",
-    ],
-    [
-      "Lucas Miller",
-      "Germany",
-      "The online platform is easy to use and the community is very supportive.",
-    ],
-  ].map(([name, country, quote], index) => ({
-    id: `testimonial-${index}`,
-    name,
-    country,
-    quote,
-    rating: 5,
-    image: fallbackAvatarImages[index],
-    goal: ["Everyday conversation", "Business Chinese", "Travel and culture", "Online confidence"][index],
-    levelBefore: ["New learner", "Basic conversation", "Beginner", "Intermediate"][index],
-    result: ["Introduced herself in Chinese after 8 weeks", "Uses Chinese in client conversations", "Completed a cultural learning trip", "Speaks more confidently every week"][index],
-    duration: ["8 weeks", "12 weeks", "6 weeks", "10 weeks"][index],
-    verified: true,
-  })),
+  testimonials: [],
   newsletterTitle: "Stay Inspired",
   newsletterDescription:
     "Get learning tips, cultural stories, and exclusive offers.",
@@ -605,160 +572,116 @@ export const getGlobalData = cache(async (locale: Locale = "en") => {
   }
 });
 
-export const getHomepageData = cache(async (
+export const getHomepageSettings = cache(async (
   locale: Locale = "en",
-): Promise<HomepageData> => {
+): Promise<Omit<HomepageData, "global" | "courses" | "articles" | "testimonials">> => {
   const localeFallback = localizeHomepage(fallback, locale);
-  try {
-    const [
-      homeResponse,
-      globalData,
-      courseResponse,
-      articleResponse,
-      testimonialResponse,
-    ] = await Promise.all([
-      optionalRequest<{ data: Record<string, unknown> | null }>(
-        localizedPath(
-          "/api/home-page?populate[heroSlides][populate]=image&populate[seo][populate]=shareImage",
-          locale,
-        ),
-        { data: null },
-      ),
-      getGlobalData(locale),
-      getEffectiveCourseRecords(locale).then((data) => ({ data })),
-      getPublishedArticleRecords(locale).then((data) => ({ data })),
-      request<{ data: Array<Record<string, unknown>> }>(
-        localizedPath(
-          "/api/testimonials?populate=avatar&sort=sortOrder:asc&filters[enabled][$eq]=true&pagination[limit]=8",
-          locale,
-        ),
-      ),
-    ]);
+  const response = await optionalRequest<{ data: Record<string, unknown> | null }>(
+    localizedPath("/api/home-page?populate[heroSlides][populate]=image&populate[seo][populate]=shareImage", locale),
+    { data: null },
+  );
+  const home = response.data ?? {};
+  const rawSlides = Array.isArray(home.heroSlides) ? home.heroSlides as Array<Record<string, unknown>> : [];
+  const slides = rawSlides.filter((slide) => slide.enabled !== false).map((slide, index) => ({
+    id: String(slide.id ?? index),
+    eyebrow: String(slide.eyebrow ?? ""),
+    title: String(slide.title ?? "").replace(". ", ".\n"),
+    description: String(slide.description ?? ""),
+    image: mediaUrl(slide.image as StrapiMedia, fallbackSlideImages[index % fallbackSlideImages.length])!,
+    imageAlt: String(slide.imageAlt ?? (slide.image as StrapiMedia)?.alternativeText ?? "SureMandarin learning experience"),
+  }));
+  return {
+    seo: parseSeo(home.seo),
+    pageTitle: String(home.pageTitle ?? localeFallback.pageTitle),
+    pageDescription: String(home.pageDescription ?? localeFallback.pageDescription),
+    slides: slides.length ? slides : localeFallback.slides,
+    courseSectionTitle: String(home.courseSectionTitle ?? localeFallback.courseSectionTitle),
+    knowledgeSectionTitle: String(home.knowledgeSectionTitle ?? localeFallback.knowledgeSectionTitle),
+    testimonialSectionTitle: String(home.testimonialSectionTitle ?? localeFallback.testimonialSectionTitle),
+    newsletterTitle: String(home.newsletterTitle ?? localeFallback.newsletterTitle),
+    newsletterDescription: String(home.newsletterDescription ?? localeFallback.newsletterDescription),
+  };
+});
 
-    const home = homeResponse.data ?? {};
-    const rawSlides = Array.isArray(home.heroSlides)
-      ? (home.heroSlides as Array<Record<string, unknown>>)
-      : [];
-    const slides = rawSlides
-      .filter((slide) => slide.enabled !== false)
-      .map((slide, index) => ({
-        id: String(slide.id ?? index),
-        eyebrow: String(slide.eyebrow ?? ""),
-        title: String(slide.title ?? "").replace(". ", ".\n"),
-        description: String(slide.description ?? ""),
-        image: mediaUrl(
-          slide.image as StrapiMedia,
-          fallbackSlideImages[index % fallbackSlideImages.length],
-        )!,
-        imageAlt: String(
-          slide.imageAlt ??
-            (slide.image as StrapiMedia)?.alternativeText ??
-            "SureMandarin learning experience",
-        ),
-      }));
+/** Course-only reads do not depend on articles, hero slides or testimonials. */
+export const getCourseCatalogData = cache(async (locale: Locale = "en"): Promise<CourseData[]> => {
+  const localeFallback = localizeHomepage(fallback, locale);
+  const records = await getEffectiveCourseRecords(locale);
+  return records.map((course) => ({
+    id: String(course.documentId ?? course.id),
+    title: String(course.title ?? ""),
+    slug: String(course.slug ?? ""),
+    category: String(course.category ?? ""),
+    summary: courseSummary(course.summary, course.title, localeFallback.courses.find((item) => item.slug === course.slug)?.summary ?? ""),
+    seo: parseSeo(course.seo),
+    updatedAt: String(course.updatedAt ?? ""),
+    image: mediaUrl(course.cover as StrapiMedia, fallbackCourseImages[String(course.category)] ?? "/images/course-private.webp")!,
+    imageAlt: String(course.imageAlt ?? (course.cover as StrapiMedia)?.alternativeText ?? String(course.title) + " learning scene"),
+  }));
+});
 
-    const courses = courseResponse.data.map((course) => ({
-      id: String(course.documentId ?? course.id),
-      title: String(course.title ?? ""),
-      slug: String(course.slug ?? ""),
-      category: String(course.category ?? ""),
-      summary: courseSummary(course.summary, course.title, localeFallback.courses.find((item) => item.slug === course.slug)?.summary ?? ""),
-      seo: parseSeo(course.seo),
-      updatedAt: String(course.updatedAt ?? ""),
-      image: mediaUrl(
-        course.cover as StrapiMedia,
-        fallbackCourseImages[String(course.category)] ??
-          "/images/course-private.webp",
-      )!,
-      imageAlt: String(
-        course.imageAlt ??
-          (course.cover as StrapiMedia)?.alternativeText ??
-          `${course.title} learning scene`,
-      ),
-    }));
+export const getTestimonialsData = cache(async (locale: Locale = "en"): Promise<TestimonialData[]> => {
+  const response = await request<{ data: Array<Record<string, unknown>> }>(
+    localizedPath("/api/testimonials?populate=avatar&sort=sortOrder:asc&filters[enabled][$eq]=true&pagination[limit]=8", locale),
+  );
+  // An empty CMS list is genuinely empty; do not publish sample student stories.
+  return response.data.map((item, index) => ({
+    id: String(item.documentId ?? item.id),
+    name: String(item.studentName ?? ""),
+    country: String(item.country ?? ""),
+    quote: String(item.quote ?? ""),
+    rating: Number(item.rating ?? 5),
+    image: mediaUrl(item.avatar as StrapiMedia, fallbackAvatarImages[index % fallbackAvatarImages.length])!,
+    goal: item.goal ? String(item.goal) : undefined,
+    levelBefore: item.levelBefore ? String(item.levelBefore) : undefined,
+    result: item.result ? String(item.result) : undefined,
+    duration: item.duration ? String(item.duration) : undefined,
+    videoUrl: item.videoUrl ? String(item.videoUrl) : undefined,
+    verified: item.verified === true,
+  }));
+});
 
-    const articles = localeFallback.articles.map((categoryCard) => {
-      const article = articleResponse.data.find((item) => item.slug === categoryCard.slug) ?? {};
-      return {
-      ...categoryCard,
-      image: mediaUrl(
-        article.cover as StrapiMedia,
-        categoryCard.image,
-      )!,
-      imageAlt: String(
-        article.imageAlt ??
-          (article.cover as StrapiMedia)?.alternativeText ??
-          categoryCard.imageAlt,
-      ),
-    }; });
-
-    const testimonials = testimonialResponse.data.map((item, index) => ({
-      id: String(item.documentId ?? item.id),
-      name: String(item.studentName ?? ""),
-      country: String(item.country ?? ""),
-      quote: String(item.quote ?? ""),
-      rating: Number(item.rating ?? 5),
-      image: mediaUrl(
-        item.avatar as StrapiMedia,
-        fallbackAvatarImages[index % fallbackAvatarImages.length],
-      )!,
-      goal: item.goal ? String(item.goal) : undefined,
-      levelBefore: item.levelBefore ? String(item.levelBefore) : undefined,
-      result: item.result ? String(item.result) : undefined,
-      duration: item.duration ? String(item.duration) : undefined,
-      videoUrl: item.videoUrl ? String(item.videoUrl) : undefined,
-      verified: item.verified !== false,
-    }));
-
+const getHomepageKnowledgeCards = cache(async (locale: Locale): Promise<ArticleData[]> => {
+  const cards = localizeHomepage(fallback, locale).articles;
+  // The homepage uses only the four category-card covers, not article bodies.
+  const filters = cards.map((card, index) => "&filters[slug][$in][" + index + "]=" + encodeURIComponent(card.slug)).join("");
+  const response = await request<{ data: Array<Record<string, unknown>> }>(
+    localizedPath("/api/articles?fields[0]=slug&fields[1]=imageAlt&populate[cover]=true&status=published&pagination[pageSize]=4" + filters, locale),
+  );
+  return cards.map((card) => {
+    const article = response.data.find((item) => item.slug === card.slug);
     return {
-      ...localeFallback,
-      seo: parseSeo(home.seo),
-      pageTitle: String(home.pageTitle ?? localeFallback.pageTitle),
-      pageDescription: String(
-        home.pageDescription ?? localeFallback.pageDescription,
-      ),
-      slides: slides.length ? slides : localeFallback.slides,
-      courseSectionTitle: String(
-        home.courseSectionTitle ?? localeFallback.courseSectionTitle,
-      ),
-      courses,
-      knowledgeSectionTitle: String(
-        home.knowledgeSectionTitle ?? localeFallback.knowledgeSectionTitle,
-      ),
-      articles: articles.length ? articles : localeFallback.articles,
-      testimonialSectionTitle: String(
-        home.testimonialSectionTitle ?? localeFallback.testimonialSectionTitle,
-      ),
-      testimonials: testimonials.length
-        ? testimonials
-        : localeFallback.testimonials,
-      newsletterTitle: String(
-        home.newsletterTitle ?? localeFallback.newsletterTitle,
-      ),
-      newsletterDescription: String(
-        home.newsletterDescription ?? localeFallback.newsletterDescription,
-      ),
-      global: globalData,
+      ...card,
+      image: mediaUrl(article?.cover as StrapiMedia, card.image)!,
+      imageAlt: String(article?.imageAlt ?? (article?.cover as StrapiMedia)?.alternativeText ?? card.imageAlt),
     };
-  } catch (error) {
-    console.error(
-      "Strapi homepage revalidation failed; preserving CMS content.",
-      error,
-    );
-    throw error;
-  }
+  });
+});
+
+export const getHomepageData = cache(async (locale: Locale = "en"): Promise<HomepageData> => {
+  const [settings, global, courses, articles, testimonials] = await Promise.all([
+    getHomepageSettings(locale),
+    getGlobalData(locale),
+    getCourseCatalogData(locale),
+    getHomepageKnowledgeCards(locale),
+    getTestimonialsData(locale),
+  ]);
+  return { ...settings, global, courses, articles, testimonials };
 });
 
 export const getCourseDetailData = cache(async function getCourseDetailData(
   slug: string,
   locale: Locale = "en",
 ): Promise<CourseDetailData | null> {
-  const home = await getHomepageData(locale);
-  const fallbackCourse = home.courses.find((item) => item.slug === slug);
+  const [records, catalog] = await Promise.all([
+    getEffectiveCourseRecords(locale),
+    getCourseCatalogData(locale),
+  ]);
+  const raw = records.find((item) => item.slug === slug);
+  if (!raw) return null;
+  const [global, testimonials] = await Promise.all([getGlobalData(locale), getTestimonialsData(locale)]);
+  const fallbackCourse = catalog.find((item) => item.slug === slug);
   try {
-    const records = await getEffectiveCourseRecords(locale);
-    const raw = records.find((item) => item.slug === slug);
-    if (!raw) return null;
     const base = fallbackCourse ?? {
       id: String(raw.documentId ?? raw.id),
       title: String(raw.title ?? ""),
@@ -789,8 +712,8 @@ export const getCourseDetailData = cache(async function getCourseDetailData(
         deliveryMode: String(raw?.deliveryMode ?? "Online or in person"),
         duration: String(raw?.duration ?? "Flexible schedule"),
       },
-      global: home.global,
-      testimonials: home.testimonials,
+      global,
+      testimonials,
     };
   } catch (error) {
     throw error;

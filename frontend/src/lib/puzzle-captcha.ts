@@ -19,6 +19,27 @@ type ChallengePayload = {
   expiresAt: number;
 };
 
+const challengeTtlMs = 5 * 60 * 1000;
+const minimumElapsedMs = 650;
+
+function isChallengePayload(value: unknown): value is ChallengePayload {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return false;
+  const payload = value as Partial<ChallengePayload>;
+  return typeof payload.nonce === "string"
+    && /^[A-Za-z0-9_-]{22}$/.test(payload.nonce)
+    && typeof payload.target === "number"
+    && Number.isInteger(payload.target)
+    && payload.target >= 0
+    && payload.target <= 100
+    && typeof payload.issuedAt === "number"
+    && Number.isSafeInteger(payload.issuedAt)
+    && payload.issuedAt >= 0
+    && typeof payload.expiresAt === "number"
+    && Number.isSafeInteger(payload.expiresAt)
+    && payload.expiresAt > payload.issuedAt
+    && payload.expiresAt - payload.issuedAt <= challengeTtlMs;
+}
+
 type RateEntry = { count: number; resetAt: number };
 type SecurityState = {
   consumed: Map<string, number>;
@@ -76,24 +97,30 @@ export function createPuzzleChallenge() {
     nonce: randomBytes(16).toString("base64url"),
     target: 24 + Math.floor(Math.random() * 63),
     issuedAt: now,
-    expiresAt: now + 5 * 60 * 1000,
+    expiresAt: now + challengeTtlMs,
   };
   const encoded = Buffer.from(JSON.stringify(payload)).toString("base64url");
   return {
     token: `${encoded}.${sign(encoded)}`,
     target: payload.target,
     image: challengeImages[Math.floor(Math.random() * challengeImages.length)],
-    expiresIn: 300,
+    expiresIn: challengeTtlMs / 1000,
   };
 }
 
 export function verifyPuzzleProof(input: PuzzleProof | null | undefined) {
   const now = Date.now();
   cleanSecurityState(now);
-  if (!input || String(input.trap ?? "").trim()) return false;
-  const token = String(input.token ?? "");
-  const [encoded, signature] = token.split(".");
-  if (!encoded || !signature) return false;
+  if (!input || typeof input !== "object" || Array.isArray(input)) return false;
+  if (input.trap != null && (typeof input.trap !== "string" || input.trap.trim())) return false;
+  const token = input.token;
+  if (typeof token !== "string" || token.length > 1024) return false;
+  const parts = token.split(".");
+  if (parts.length !== 2) return false;
+  const [encoded, signature] = parts;
+  if (!/^[A-Za-z0-9_-]+$/.test(encoded) || !/^[A-Za-z0-9_-]{43}$/.test(signature)) return false;
+  // Accept only the canonical encoding produced by createPuzzleChallenge.
+  if (Buffer.from(encoded, "base64url").toString("base64url") !== encoded) return false;
   const expected = sign(encoded);
   const providedBuffer = Buffer.from(signature);
   const expectedBuffer = Buffer.from(expected);
@@ -102,27 +129,33 @@ export function verifyPuzzleProof(input: PuzzleProof | null | undefined) {
     !timingSafeEqual(providedBuffer, expectedBuffer)
   ) return false;
 
-  let payload: ChallengePayload;
+  let payload: unknown;
   try {
     payload = JSON.parse(Buffer.from(encoded, "base64url").toString("utf8"));
   } catch {
     return false;
   }
   if (
-    !payload.nonce ||
-    payload.expiresAt < now ||
-    payload.issuedAt > now + 5_000 ||
+    !isChallengePayload(payload) ||
+    payload.expiresAt <= now ||
+    now - payload.issuedAt < minimumElapsedMs ||
     state.consumed.has(signature)
   ) return false;
 
-  const position = Number(input.position);
-  const elapsedMs = Number(input.elapsedMs);
-  const moves = Number(input.moves);
+  const { position, elapsedMs, moves } = input;
   const valid =
+    typeof position === "number" &&
     Number.isFinite(position) &&
+    position >= 0 &&
+    position <= 100 &&
     Math.abs(position - payload.target) <= 4 &&
-    elapsedMs >= 650 &&
-    elapsedMs <= 5 * 60 * 1000 &&
+    typeof elapsedMs === "number" &&
+    Number.isFinite(elapsedMs) &&
+    elapsedMs >= minimumElapsedMs &&
+    elapsedMs <= challengeTtlMs &&
+    elapsedMs <= now - payload.issuedAt &&
+    typeof moves === "number" &&
+    Number.isSafeInteger(moves) &&
     moves >= 3;
   if (valid) state.consumed.set(signature, payload.expiresAt);
   return valid;

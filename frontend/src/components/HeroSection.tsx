@@ -1,6 +1,6 @@
 "use client";
 
-import Image from "next/image";
+import { getImageProps } from "next/image";
 import Link from "next/link";
 import {
   ArrowRight,
@@ -18,6 +18,10 @@ import { FormEvent, useEffect, useState } from "react";
 import type { HeroSlideData } from "@/lib/strapi";
 import type { Locale } from "@/lib/i18n";
 
+const DESKTOP_HERO_MEDIA = "(min-width: 768px)";
+const MOBILE_HERO_PLACEHOLDER =
+  "data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs=";
+
 export function HeroSection({
   slides,
   locale = "en",
@@ -29,11 +33,25 @@ export function HeroSection({
   const [submitting, setSubmitting] = useState(false);
   const router = useRouter();
   useEffect(() => {
-    const timer = window.setInterval(
-      () => setActive((value) => (value + 1) % slides.length),
-      6500,
-    );
-    return () => window.clearInterval(timer);
+    const desktop = window.matchMedia(DESKTOP_HERO_MEDIA);
+    let timer: number | undefined;
+    const updateRotation = () => {
+      window.clearInterval(timer);
+      timer = undefined;
+      if (desktop.matches && slides.length > 1) {
+        timer = window.setInterval(
+          () => setActive((value) => (value + 1) % slides.length),
+          6500,
+        );
+      }
+    };
+
+    updateRotation();
+    desktop.addEventListener("change", updateRotation);
+    return () => {
+      window.clearInterval(timer);
+      desktop.removeEventListener("change", updateRotation);
+    };
   }, [slides.length]);
   const submit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -50,6 +68,22 @@ export function HeroSection({
     router.push(`/${locale}/courses/online-course?${params.toString()}`);
   };
   const slide = slides[active];
+  const {
+    props: {
+      src: desktopSrc,
+      srcSet: desktopSrcSet,
+      sizes: desktopSizes,
+      ...imageProps
+    },
+  } = getImageProps({
+    src: slide.image,
+    alt: slide.imageAlt,
+    fill: true,
+    loading: "eager",
+    fetchPriority: active === 0 ? "high" : "auto",
+    sizes: "(max-width: 1024px) 100vw, 55vw",
+    className: "object-cover object-right",
+  });
   return (
     <section id="home" className="sm-home-hero soft-gradient overflow-hidden">
       <div className="sm-home-hero-grid page-shell grid min-h-[650px] items-stretch lg:grid-cols-[.94fr_1.06fr]">
@@ -167,7 +201,7 @@ export function HeroSection({
               </li>
             ))}
           </ul>
-          <div className="mt-10 flex items-center gap-3">
+          <div className="mt-10 hidden items-center gap-3 md:flex">
             {slides.map((_, index) => (
               <button
                 key={index}
@@ -179,15 +213,20 @@ export function HeroSection({
           </div>
         </div>
         <div className="sm-home-hero-media relative min-h-[370px] lg:min-h-full">
-          <Image
-            key={slide.image}
-            src={slide.image}
-            alt={slide.imageAlt}
-            fill
-            priority
-            sizes="(max-width: 1024px) 100vw, 55vw"
-            className="object-cover object-right"
-          />
+          {/* The browser selects the desktop source before requesting an image;
+              CSS hiding alone would still download the photograph on mobile. */}
+          <picture key={slide.image}>
+            <source
+              media={DESKTOP_HERO_MEDIA}
+              srcSet={desktopSrcSet ?? desktopSrc}
+              sizes={desktopSizes}
+            />
+            <img
+              {...imageProps}
+              src={MOBILE_HERO_PLACEHOLDER}
+              alt={slide.imageAlt}
+            />
+          </picture>
           <div className="sm-home-hero-overlay pointer-events-none absolute inset-0 bg-gradient-to-r from-[#edf8ff] via-transparent to-transparent" />
         </div>
       </div>

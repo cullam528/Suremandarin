@@ -1,5 +1,5 @@
 import type { MetadataRoute } from "next";
-import { getHomepageData, getKnowledgeArticles, isIndexableArticle, knowledgeCategories, type KnowledgeCategorySlug } from "@/lib/strapi";
+import { getHomepageSettings, getCourseCatalogData, getKnowledgeArticles, isIndexableArticle, knowledgeCategories, type KnowledgeCategorySlug } from "@/lib/strapi";
 import { absoluteUrl, indexingAllowed } from "@/lib/seo";
 import { languagePaths, validContentDate } from "@/lib/content-seo";
 import { publicPages } from "@/lib/site-pages";
@@ -16,8 +16,9 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const categories = Object.keys(knowledgeCategories) as KnowledgeCategorySlug[];
   // Fail revalidation on a CMS outage so Next keeps the last good sitemap.
   // Publishing a truncated fallback would silently remove valid URLs.
-  const [homes, articleGroups] = await Promise.all([
-    Promise.all(locales.map((locale) => getHomepageData(locale))),
+  const [homes, courseGroups, articleGroups] = await Promise.all([
+    Promise.all(locales.map((locale) => getHomepageSettings(locale))),
+    Promise.all(locales.map((locale) => getCourseCatalogData(locale))),
     Promise.all(categories.map(async (category) => ({ category, articles: await Promise.all(locales.map((locale) => getKnowledgeArticles(category, locale))) }))),
   ]);
   const entries: MetadataRoute.Sitemap = [];
@@ -28,8 +29,8 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   }
   for (const [index, locale] of locales.entries()) {
     const otherIndex = index === 0 ? 1 : 0;
-    for (const course of homes[index].courses.filter((item) => item.slug && item.seo?.noIndex !== true)) {
-      const other = homes[otherIndex].courses.find((item) => item.id === course.id) ?? homes[otherIndex].courses.find((item) => item.slug === course.slug);
+    for (const course of courseGroups[index].filter((item) => item.slug && item.seo?.noIndex !== true)) {
+      const other = courseGroups[otherIndex].find((item) => item.id === course.id) ?? courseGroups[otherIndex].find((item) => item.slug === course.slug);
       const paths = [{ locale, path: `/${locale}/courses/${course.slug}` }];
       if (other && other.seo?.noIndex !== true) paths.push({ locale: locales[otherIndex], path: `/${locales[otherIndex]}/courses/${other.slug}` });
       entries.push({ url: absoluteUrl(`/${locale}/courses/${course.slug}`), lastModified: validContentDate(course.updatedAt), alternates: alternates(paths) });

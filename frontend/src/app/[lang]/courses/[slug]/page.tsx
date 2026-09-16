@@ -6,15 +6,15 @@ import { Footer } from "@/components/Footer";
 import { Header } from "@/components/Header";
 import { isLocale, type Locale } from "@/lib/i18n";
 import { absoluteUrl, breadcrumbStructuredData, pageMetadata } from "@/lib/seo";
-import { getCourseDetailData, getHomepageData } from "@/lib/strapi";
+import { getCourseDetailData, getCourseCatalogData } from "@/lib/strapi";
 import { languagePaths } from "@/lib/content-seo";
 import { StructuredData, SiteStructuredData } from "@/components/seo/StructuredData";
 
 async function getCourseLanguagePaths(id: string, slug: string, locale: Locale) {
   const otherLocale: Locale = locale === "en" ? "zh" : "en";
-  const otherHome = await getHomepageData(otherLocale);
-  const translation = otherHome.courses.find((item) => item.id === id)
-    ?? otherHome.courses.find((item) => item.slug === slug);
+  const otherCourses = await getCourseCatalogData(otherLocale);
+  const translation = otherCourses.find((item) => item.id === id)
+    ?? otherCourses.find((item) => item.slug === slug);
   const paths: Array<{ locale: Locale; path: string }> = [
     { locale, path: `/${locale}/courses/${slug}` },
   ];

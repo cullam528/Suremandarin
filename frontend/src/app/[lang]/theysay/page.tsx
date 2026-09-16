@@ -3,7 +3,7 @@ import { notFound } from "next/navigation";
 import { TheySayContent } from "@/components/TheySayContent";
 import { SiteShell } from "@/components/site/SiteShell";
 import { isLocale } from "@/lib/i18n";
-import { getHomepageData } from "@/lib/strapi";
+import { getHomepageSettings, getTestimonialsData } from "@/lib/strapi";
 import { pageMetadata } from "@/lib/seo";
 
 export async function generateMetadata({
@@ -31,13 +31,13 @@ export default async function TheySayPage({
 }) {
   const { lang } = await params;
   if (!isLocale(lang)) notFound();
-  const home = await getHomepageData(lang);
+  const [settings, testimonials] = await Promise.all([getHomepageSettings(lang), getTestimonialsData(lang)]);
 
   return (
     <SiteShell locale={lang}>
       <TheySayContent
-        testimonials={home.testimonials}
-        title={home.testimonialSectionTitle}
+        testimonials={testimonials}
+        title={settings.testimonialSectionTitle}
         locale={lang}
         showSubmission
       />

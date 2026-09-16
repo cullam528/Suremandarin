@@ -6,7 +6,7 @@ import { AppShowcase } from "@/components/site/AppShowcase";
 import { isLocale } from "@/lib/i18n";
 import { StructuredData } from "@/components/seo/StructuredData";
 import {
-  getHomepageData,
+  getGlobalData,
   getKnowledgeArticles,
   knowledgeCategories,
   type KnowledgeCategorySlug,
@@ -28,8 +28,8 @@ export default async function KnowledgeIndex({
 }) {
   const { lang } = await params;
   if (!isLocale(lang)) notFound();
-  const [home, ...articleGroups] = await Promise.all([
-    getHomepageData(lang),
+  const [global, ...articleGroups] = await Promise.all([
+    getGlobalData(lang),
     ...Object.keys(knowledgeCategories).map((category) =>
       getKnowledgeArticles(category as KnowledgeCategorySlug, lang),
     ),
@@ -76,7 +76,7 @@ export default async function KnowledgeIndex({
         }
         locale={lang}
       />
-      <AppShowcase locale={lang} settings={home.global} headingLevel={2} />
+      <AppShowcase locale={lang} settings={global} headingLevel={2} />
     </SiteShell>
   );
 }

@@ -1,5 +1,5 @@
 "use client";
-import Image from "next/image";
+import Image, { getImageProps } from "next/image";
 import Link from "next/link";
 import {
   CheckCircle2,
@@ -13,6 +13,7 @@ import {
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import type { Locale } from "@/lib/i18n";
+import { sendAuthRequest } from "@/lib/auth-request";
 import { PuzzleCaptcha, type CaptchaProof } from "./PuzzleCaptcha";
 
 export function AuthForm({
@@ -77,6 +78,7 @@ export function AuthForm({
   }
   async function submit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
+    if (loading || !captchaProof) return;
     setLoading(true);
     setError("");
     const fd = new FormData(e.currentTarget);
@@ -102,38 +104,33 @@ export function AuthForm({
           password: fd.get("password"),
           captcha: { ...captchaProof, trap: fd.get("company") },
         };
-    const response = await fetch(`/api/auth/${mode}`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload),
-    });
-    const result = await response.json();
-    setLoading(false);
-    if (!response.ok) {
-      setError(result.error ?? (zh ? "请稍后重试。" : "Please try again."));
+    try {
+      await sendAuthRequest(`/api/auth/${mode}`, payload, locale);
+    } catch (error) {
+      setError(error instanceof Error ? error.message : (zh ? "请稍后重试。" : "Please try again."));
       setCaptchaProof(null);
       setCaptchaVersion((value) => value + 1);
       return;
+    } finally {
+      setLoading(false);
     }
     router.push(`/${locale}/account/profile`);
     router.refresh();
   }
   const displayInviter = inviterName || (zh ? "SureMandarin 学员" : "a SureMandarin learner");
+  const illustration = getImageProps({
+    src: "/images/hero-culture.webp", alt: "", fill: true,
+    sizes: "(min-width: 1440px) 594px, 45vw", loading: "eager", className: "object-cover opacity-80",
+  }).props;
   return (
     <main className="sm-auth-page soft-gradient min-h-[calc(100vh-5rem)] py-12">
       <div className="sm-auth-card page-shell grid overflow-hidden rounded-[2rem] bg-white shadow-2xl lg:grid-cols-[.9fr_1.1fr]">
         <section className="relative hidden min-h-[680px] overflow-hidden bg-brand-navy lg:block">
-          <Image
-            src="/images/hero-culture.webp"
-            alt={
-              zh
-                ? "探索中文与中国文化"
-                : "Discover Chinese language and culture"
-            }
-            fill
-            priority
-            className="object-cover opacity-80"
-          />
+          <picture>
+            <source media="(min-width: 1024px)" srcSet={illustration.srcSet} sizes={illustration.sizes} />
+            {/* Mobile hides this decorative panel, so do not download its photo. */}
+            <img {...illustration} srcSet={undefined} sizes={undefined} src="data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs=" alt="" />
+          </picture>
           <div className="absolute inset-0 bg-gradient-to-t from-brand-navy via-brand-navy/20 to-transparent" />
           <div className="absolute bottom-0 p-12 text-white">
             <p className="text-sm font-extrabold uppercase tracking-widest text-brand-cyan">
@@ -146,8 +143,8 @@ export function AuthForm({
             </h1>
             <p className="mt-5 leading-7 text-blue-100">
               {zh
-                ? "一个账户即可访问网站、移动端 App 和小程序。"
-                : "One account gives you access across the website, mobile app and mini program."}
+                ? "保存学习进度，管理课程预约，继续每天的中文练习。"
+                : "Save your progress, manage lesson bookings and keep your daily Chinese practice going."}
             </p>
           </div>
         </section>
@@ -217,6 +214,7 @@ export function AuthForm({
                 <UserRound />
                 <input
                   required
+                  aria-label={zh ? "姓名" : "Full name"}
                   name="fullName"
                   autoComplete="name"
                   placeholder={zh ? "姓名" : "Full name"}
@@ -227,17 +225,20 @@ export function AuthForm({
               <Mail />
               <input
                 required
+                aria-label={zh ? "电子邮箱" : "Email address"}
                 name="email"
                 type="email"
                 autoComplete="email"
                 placeholder={zh ? "电子邮箱" : "Email address"}
               />
             </label>
-            <label className="auth-field">
+            <label className="auth-field relative">
               <LockKeyhole />
               <input
                 required
+                aria-label={zh ? "密码" : "Password"}
                 name="password"
+                className="pr-10"
                 type={show ? "text" : "password"}
                 minLength={8}
                 autoComplete={register ? "new-password" : "current-password"}
@@ -245,6 +246,7 @@ export function AuthForm({
               />
               <button
                 type="button"
+                className="absolute right-2 top-1/2 grid min-h-11 min-w-11 -translate-y-1/2 place-items-center rounded-lg focus-visible:outline-2 focus-visible:outline-brand-blue"
                 onClick={() => setShow(!show)}
                 aria-label={
                   show
@@ -281,9 +283,11 @@ export function AuthForm({
                     type="checkbox"
                     className="mt-1"
                   />
-                  {zh
-                    ? "我同意隐私政策和使用条款。"
-                    : "I agree to the Privacy Policy and Terms of Use."}
+                  <span>{zh ? "我同意" : "I agree to the "}
+                    <Link href={`/${locale}/privacy`} className="font-semibold text-brand-blue underline underline-offset-2">{zh ? "隐私政策" : "Privacy Policy"}</Link>
+                    {zh ? "和" : " and "}
+                    <Link href={`/${locale}/terms`} className="font-semibold text-brand-blue underline underline-offset-2">{zh ? "使用条款" : "Terms of Use"}</Link>.
+                  </span>
                 </label>
                 <label className="flex gap-3 text-xs leading-5 text-slate-600">
                   <input
@@ -327,7 +331,7 @@ export function AuthForm({
             {zh ? "或使用以下账号继续" : "OR CONTINUE WITH"}
             <span className="h-px flex-1 bg-brand-line" />
           </div>
-          <div className="grid gap-3 sm:grid-cols-3">
+          <div className="grid grid-cols-3 gap-2 sm:gap-3">
             <Link
               href={socialHref("google")}
               className="rounded-xl border border-brand-line px-4 py-3 text-center text-sm font-bold text-brand-navy hover:border-brand-blue"
@@ -356,14 +360,9 @@ export function AuthForm({
             <Link className="font-bold text-brand-blue hover:underline" href={`/${locale}/privacy`}>
               {zh ? "隐私政策" : "Privacy Policy"}
             </Link>
-            。
+            {zh ? "。" : "."}
           </p>
-          <div className="my-7 flex items-center gap-3 text-xs text-slate-400">
-            <span className="h-px flex-1 bg-brand-line" />
-            {zh ? "账户安全保障" : "SECURE ACCOUNT"}
-            <span className="h-px flex-1 bg-brand-line" />
-          </div>
-          <p className="text-center text-sm text-slate-600">
+          <p className="mt-7 text-center text-sm leading-6 text-slate-600">
             {!register && (
               <>
                 <Link className="font-extrabold text-brand-blue" href={`/${locale}/forgot-password`}>

@@ -1,5 +1,3 @@
-"use client";
-
 import Image from "next/image";
 import Link from "next/link";
 import {
@@ -9,7 +7,6 @@ import {
   Check,
   CheckCircle2,
   ClipboardCheck,
-  ChevronDown,
   Clock3,
   Globe2,
   GraduationCap,
@@ -23,11 +20,11 @@ import {
   UsersRound,
   Users2,
 } from "lucide-react";
-import { useState } from "react";
 import type { CourseDetailData } from "@/lib/strapi";
 import { getLocalizedCoursePageContent } from "@/lib/course-content";
 import type { Locale } from "@/lib/i18n";
 import { CourseConsultationForm } from "@/components/site/CourseConsultation";
+import { CourseFaq } from "@/components/course-detail/CourseFaq";
 
 const audiences = [
   [
@@ -56,7 +53,7 @@ const audiences = [
     Sparkles,
   ],
 ];
-const faqs = [
+const faqs: Array<[string, string]> = [
   [
     "How are the lessons conducted?",
     "Lessons are conducted one-to-one online with an experienced native Chinese teacher.",
@@ -82,7 +79,7 @@ const faqs = [
     "Your learning advisor will explain the applicable terms before enrollment.",
   ],
 ];
-const zhFaqs = [
+const zhFaqs: Array<[string, string]> = [
   [
     "课程如何进行？",
     "课程由经验丰富的中文母语教师在线授课，并根据课程类型采用一对一或小班形式。",
@@ -150,7 +147,6 @@ export function CourseDetail({
   leadSource?: string;
   campaign?: string;
 }) {
-  const [openFaq, setOpenFaq] = useState(0);
   const zh = locale === "zh";
   const pageFaqs = zh ? zhFaqs : faqs;
   const page = getLocalizedCoursePageContent(data.course.slug, locale);
@@ -450,27 +446,7 @@ export function CourseDetail({
               {zh ? "常见问题" : "Frequently asked questions"}
             </h2>
           </div>
-          <div className="mt-10 grid gap-3 md:grid-cols-2">
-            {pageFaqs.map(([q, a], i) => (
-              <article key={q} className="rounded-2xl bg-white shadow-sm">
-                <button
-                  onClick={() => setOpenFaq(openFaq === i ? -1 : i)}
-                  className="flex w-full items-center justify-between gap-5 p-5 text-left font-extrabold text-brand-navy"
-                  aria-expanded={openFaq === i}
-                >
-                  {q}
-                  <ChevronDown
-                    className={`shrink-0 transition ${openFaq === i ? "rotate-180" : ""}`}
-                  />
-                </button>
-                {openFaq === i && (
-                  <p className="px-5 pb-5 text-sm leading-7 text-slate-600">
-                    {a}
-                  </p>
-                )}
-              </article>
-            ))}
-          </div>
+          <CourseFaq items={pageFaqs} />
         </div>
       </section>
 
