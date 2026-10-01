@@ -69,7 +69,7 @@ export function AuthForm({
     return () => window.clearTimeout(timer);
   }, [register, zh]);
 
-  function socialHref(provider: "google" | "facebook" | "twitter") {
+  function socialHref(provider: "google" | "linkedin" | "twitter") {
     const query = new URLSearchParams({ locale, mode });
     if (register && referralCode) query.set("ref", referralCode);
     if (register && inviterName) query.set("refName", inviterName);
@@ -339,10 +339,10 @@ export function AuthForm({
               Google
             </Link>
             <Link
-              href={socialHref("facebook")}
+              href={socialHref("linkedin")}
               className="rounded-xl border border-brand-line px-4 py-3 text-center text-sm font-bold text-brand-navy hover:border-brand-blue"
             >
-              Facebook
+              LinkedIn
             </Link>
             <Link
               href={socialHref("twitter")}

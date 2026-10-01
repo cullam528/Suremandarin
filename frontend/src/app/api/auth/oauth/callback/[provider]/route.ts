@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import { setAuthCookie, STRAPI_URL } from "@/lib/auth";
 
-const supported = new Set(["google", "facebook", "twitter"]);
+const supported = new Set(["google", "linkedin", "twitter"]);
 
 const OAUTH_CONTEXT_COOKIE = "suremandarin_oauth_context";
 

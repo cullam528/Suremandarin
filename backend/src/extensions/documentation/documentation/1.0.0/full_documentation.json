@@ -1093,7 +1093,7 @@
           "Authentication"
         ],
         "summary": "Start social login",
-        "description": "Browser redirect flow for Google, Facebook, or X. The provider callback ultimately returns through the configured SureMandarin frontend callback.",
+        "description": "Browser redirect flow for Google, LinkedIn (OpenID Connect), or X. The provider callback ultimately returns through the configured SureMandarin frontend callback.",
         "operationId": "startSocialLogin",
         "security": [],
         "parameters": [
@@ -1105,7 +1105,7 @@
               "type": "string",
               "enum": [
                 "google",
-                "facebook",
+                "linkedin",
                 "twitter"
               ]
             }
@@ -1139,7 +1139,7 @@
               "type": "string",
               "enum": [
                 "google",
-                "facebook",
+                "linkedin",
                 "twitter"
               ]
             }

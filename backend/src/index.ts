@@ -7,6 +7,7 @@ import {
   validateLessonHoursTarget,
 } from './api/lesson-credit/services/balance';
 import { appApiDocumentation } from './documentation/app-api';
+import { LINKEDIN_SCOPES, linkedinAuthCallback } from './utils/linkedin-auth';
 
 const courses = [
   ['Private Course','private'], ['Group Course','group'], ['Learn & Travel Course','learn-travel'],
@@ -1039,19 +1040,41 @@ async function ensureTestimonialSubmitPermission(strapi: Core.Strapi) {
 async function configureSocialProviders(strapi: Core.Strapi) {
   const store = strapi.store({ type: 'plugin', name: 'users-permissions' });
   const grant = (await store.get({ key: 'grant' }) ?? {}) as Record<string, unknown>;
-  const callbackBase = process.env.FRONTEND_URL ?? 'http://localhost:3010';
+  const callbackBase = (process.env.FRONTEND_URL ?? 'http://localhost:3010').replace(/\/$/, '');
   const providers = [
     ['google', process.env.GOOGLE_CLIENT_ID, process.env.GOOGLE_CLIENT_SECRET, ['openid', 'email', 'profile']],
-    ['facebook', process.env.FACEBOOK_APP_ID, process.env.FACEBOOK_APP_SECRET, ['email']],
+    ['linkedin', process.env.LINKEDIN_CLIENT_ID, process.env.LINKEDIN_CLIENT_SECRET, LINKEDIN_SCOPES],
     ['twitter', process.env.X_CONSUMER_KEY, process.env.X_CONSUMER_SECRET, undefined],
   ] as const;
-  delete grant.linkedin;
+  // Retire only the Facebook sign-in entry point; existing members/data stay intact.
+  const facebook = grant.facebook && typeof grant.facebook === 'object' ? grant.facebook : {};
+  grant.facebook = { ...facebook, enabled: false };
   delete grant.apple;
   for (const [name, key, secret, scope] of providers) {
     if (!key || !secret) continue;
     grant[name] = { enabled: true, key, secret, callback: `${callbackBase}/api/auth/oauth/callback/${name}`, ...(scope ? { scope } : {}) };
   }
+  // Also upgrade credentials entered through Strapi's Providers settings, not only env.
+  const linkedin = grant.linkedin && typeof grant.linkedin === 'object' ? grant.linkedin : {};
+  grant.linkedin = {
+    enabled: false,
+    ...linkedin,
+    scope: LINKEDIN_SCOPES,
+    callback: `${callbackBase}/api/auth/oauth/callback/linkedin`,
+  };
   await store.set({ key: 'grant', value: grant });
+
+  // Register regardless of credential source, including later changes made in admin.
+  // Strapi's built-in LinkedIn adapter still uses the retired v2/me scopes/endpoints.
+  const linkedinRegistry = strapi.plugin('users-permissions').service('providers-registry') as {
+    add: (name: string, config: Record<string, unknown>) => void;
+  };
+  linkedinRegistry.add('linkedin', {
+    enabled: true,
+    icon: 'linkedin',
+    grantConfig: { scope: LINKEDIN_SCOPES },
+    authCallback: linkedinAuthCallback,
+  });
 
   // Strapi's built-in Google adapter only requests the email scope and turns
   // the email prefix into the member name. Use Google's OpenID userinfo

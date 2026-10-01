@@ -126,10 +126,10 @@ export const appApiDocumentation = {
       get: {
         tags: ['Authentication'],
         summary: 'Start social login',
-        description: 'Browser redirect flow for Google, Facebook, or X. The provider callback ultimately returns through the configured SureMandarin frontend callback.',
+        description: 'Browser redirect flow for Google, LinkedIn (OpenID Connect), or X. The provider callback ultimately returns through the configured SureMandarin frontend callback.',
         operationId: 'startSocialLogin',
         security: [],
-        parameters: [{ name: 'provider', in: 'path', required: true, schema: { type: 'string', enum: ['google', 'facebook', 'twitter'] } }],
+        parameters: [{ name: 'provider', in: 'path', required: true, schema: { type: 'string', enum: ['google', 'linkedin', 'twitter'] } }],
         responses: { 302: { description: 'Redirect to the social provider' }, 400: { description: 'Provider is disabled or misconfigured' } },
       },
     },
@@ -141,7 +141,7 @@ export const appApiDocumentation = {
         operationId: 'completeSocialLogin',
         security: [],
         parameters: [
-          { name: 'provider', in: 'path', required: true, schema: { type: 'string', enum: ['google', 'facebook', 'twitter'] } },
+          { name: 'provider', in: 'path', required: true, schema: { type: 'string', enum: ['google', 'linkedin', 'twitter'] } },
           { name: 'access_token', in: 'query', schema: { type: 'string' } },
         ],
         responses: json({ $ref: '#/components/schemas/AuthResponse' }),
