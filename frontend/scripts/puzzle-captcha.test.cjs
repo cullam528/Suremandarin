@@ -62,6 +62,25 @@ function proof(token, overrides = {}) {
   return { token, position: 50, elapsedMs: 650, moves: 3, ...overrides };
 }
 
+test('challenge images are distinct, complete 600×240 assets matching the responsive frame', () => {
+  const source = fs.readFileSync(modulePath, 'utf8');
+  const paths = [...source.matchAll(/"(\/images\/captcha\/[^"?]+\.png)"/g)].map((match) => match[1]);
+  assert.equal(paths.length, 2);
+  const hashes = new Set();
+  for (const image of paths) {
+    assert.match(image, /-v2\.png$/, 'New filenames must avoid the old cropped-image cache');
+    const bytes = fs.readFileSync(path.join(__dirname, '../public', image));
+    assert.equal(bytes.subarray(1, 4).toString(), 'PNG');
+    assert.equal(bytes.readUInt32BE(16), 600);
+    assert.equal(bytes.readUInt32BE(20), 240);
+    hashes.add(crypto.createHash('sha256').update(bytes).digest('hex'));
+  }
+  assert.equal(hashes.size, paths.length, 'Do not offer duplicate images under different names');
+  const css = fs.readFileSync(path.join(__dirname, '../src/components/auth/PuzzleCaptcha.module.css'), 'utf8');
+  assert.match(css, /aspect-ratio:\s*600\s*\/\s*240/);
+  assert.match(css, /object-fit:\s*contain/);
+});
+
 test('generated challenges retain the public contract and valid proofs are single-use', () => {
   const api = loader();
   const challenge = api.createPuzzleChallenge();

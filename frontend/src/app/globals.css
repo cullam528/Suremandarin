@@ -289,12 +289,12 @@ button, a { -webkit-tap-highlight-color: transparent; }
   .sm-site-footer > div:last-child > p { line-height: 1.4; }
 
   .sm-auth-page { min-height: calc(100dvh - 4.25rem); padding-block: 1.25rem 2rem; }
-  .sm-auth-card { width: min(100% - 1.5rem, 30rem); border-radius: 1.25rem; }
-  .sm-auth-form-panel { padding: 1.75rem 1.1rem 2rem; }
+  .sm-auth-card { width: min(100% - 1.5rem, 30rem); grid-template-columns: minmax(0, 1fr); border-radius: 1.25rem; }
+  .sm-auth-form-panel { min-width: 0; padding: 1.75rem 1.1rem 2rem; }
   .sm-auth-form-panel > a img { width: min(220px, 78vw); }
   .sm-auth-form-panel .section-kicker { margin-top: 1.75rem; }
   .sm-auth-form-panel h2 { font-size: 1.65rem; line-height: 1.25; }
-  .sm-auth-form-panel form { margin-top: 1.5rem; gap: .75rem; }
+  .sm-auth-form-panel form { grid-template-columns: minmax(0, 1fr); margin-top: 1.5rem; gap: .75rem; }
   .auth-field { min-height: 3rem; padding: .7rem .8rem; }
 
   .sm-level-test { padding-block: 2.5rem 3.5rem; }
