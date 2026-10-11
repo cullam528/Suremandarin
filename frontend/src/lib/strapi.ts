@@ -1,4 +1,6 @@
+import "server-only";
 import { cache } from "react";
+import { unstable_cache } from "next/cache";
 import { localizeHomepage, type Locale } from "@/lib/i18n";
 import { contentText, type ContentSeo } from "@/lib/content-seo";
 import { editorialGuides } from "@/lib/editorial-guides";
@@ -14,6 +16,30 @@ const STRAPI_REQUEST_TIMEOUT_MS =
   Number.isFinite(configuredTimeout) && configuredTimeout >= 1000
     ? configuredTimeout
     : 30_000;
+
+// Only anonymous, published CMS data belongs here. Member reads remain in
+// member-article.ts with no-store and request-specific backend authorization.
+// The cache stores successful snapshots, including empty/withdrawn results.
+// Failed refreshes retain that snapshot, never resurrecting static samples.
+function publicSnapshot<Args extends unknown[], Result>(
+  name: string,
+  read: (...args: Args) => Promise<Result>,
+) {
+  return cache(unstable_cache(read, ["suremandarin-public-v1", STRAPI_URL, name], {
+    revalidate: 60,
+    tags: ["strapi-homepage", `strapi-${name}`],
+  }));
+}
+
+/** Decorations may disappear during an outage; content/SEO reads may not. */
+async function optionalDecoration<T>(name: string, read: () => Promise<T>, fallbackValue: T): Promise<T> {
+  try {
+    return await read();
+  } catch {
+    console.warn("[cms] Optional section unavailable", { section: name });
+    return fallbackValue;
+  }
+}
 
 type StrapiMedia = { url?: string; alternativeText?: string | null } | null;
 
@@ -344,15 +370,41 @@ function courseSummary(value: unknown, title: unknown, fallbackSummary: string) 
     ? fallbackSummary : summary;
 }
 
-const request = cache(async function request<T>(path: string): Promise<T> {
-  const response = await fetch(`${STRAPI_URL}${path}`, {
-    next: { revalidate: 60, tags: ["strapi-homepage"] },
-    headers: { Accept: "application/json" },
-    signal: AbortSignal.timeout(STRAPI_REQUEST_TIMEOUT_MS),
-  });
-  if (!response.ok)
-    throw new Error(`Strapi request failed: ${response.status} ${path}`);
-  return response.json() as Promise<T>;
+async function readCms<T>(path: string, missing?: { value: T }, timeoutMs = STRAPI_REQUEST_TIMEOUT_MS): Promise<T> {
+  const startedAt = Date.now();
+  const url = new URL(`${STRAPI_URL}${path}`);
+  let status: number | undefined;
+  try {
+    const response = await fetch(url.href, {
+      // A successful *complete snapshot* is cached above this transport. A
+      // second fetch cache could mix fresh ownership with stale article bodies.
+      cache: "no-store",
+      headers: { Accept: "application/json" },
+      signal: AbortSignal.timeout(timeoutMs),
+    });
+    status = response.status;
+    if (status === 404 && missing) return missing.value;
+    if (!response.ok) throw new Error(`Strapi request failed: ${status} ${path}`);
+    const body = await response.json();
+    if (!body || typeof body !== "object" || !("data" in body)) {
+      throw new Error(`Invalid Strapi response: ${url.pathname}`);
+    }
+    return body as T;
+  } catch (error) {
+    // Never log response bodies, query strings, tokens, or member information.
+    console.error("[cms] Public read failed", {
+      endpoint: url.pathname,
+      locale: url.searchParams.get("locale"),
+      status: status ?? null,
+      elapsedMs: Date.now() - startedAt,
+      error: error instanceof Error ? error.name : "UnknownError",
+    });
+    throw error;
+  }
+}
+
+const request = cache(async function request<T>(path: string, timeoutMs = STRAPI_REQUEST_TIMEOUT_MS): Promise<T> {
+  return readCms<T>(path, undefined, timeoutMs);
 });
 
 const getCourseRecords = cache(async (locale: Locale) => {
@@ -360,13 +412,16 @@ const getCourseRecords = cache(async (locale: Locale) => {
     "/api/courses?populate[cover]=true&populate[seo][populate]=shareImage&sort=sortOrder:asc&status=published&pagination[pageSize]=100",
     locale,
   ));
+  if (!Array.isArray(response.data)) throw new Error("Invalid course catalog response");
   return response.data;
 });
 
-const getEffectiveCourseRecords = cache(async (locale: Locale): Promise<Array<Record<string, unknown>>> => {
-  const records = await getCourseRecords(locale);
+const getEffectiveCourseRecords = publicSnapshot("courses", async (locale: Locale): Promise<Array<Record<string, unknown>>> => {
+  const [records, englishRecords] = await Promise.all([
+    getCourseRecords(locale),
+    locale === "en" ? Promise.resolve([]) : getCourseRecords("en"),
+  ]);
   if (locale === "en") return records.filter((item) => item.enabled !== false);
-  const englishRecords = await getCourseRecords("en");
   const translatedCopy = localizeHomepage(fallback, locale).courses;
   const configuredSlugs = new Set(records.map((item) => String(item.slug)));
   // Preserve the site's existing authored Chinese course versions while the CMS
@@ -381,16 +436,8 @@ const getEffectiveCourseRecords = cache(async (locale: Locale): Promise<Array<Re
   return [...records.filter((item) => item.enabled !== false), ...translated];
 });
 
-async function optionalRequest<T>(path: string, empty: T): Promise<T> {
-  const response = await fetch(`${STRAPI_URL}${path}`, {
-    next: { revalidate: 60, tags: ["strapi-homepage"] },
-    headers: { Accept: "application/json" },
-    signal: AbortSignal.timeout(STRAPI_REQUEST_TIMEOUT_MS),
-  });
-  if (response.status === 404) return empty;
-  if (!response.ok)
-    throw new Error(`Strapi request failed: ${response.status} ${path}`);
-  return response.json() as Promise<T>;
+async function optionalRequest<T>(path: string, empty: T, timeoutMs = STRAPI_REQUEST_TIMEOUT_MS): Promise<T> {
+  return readCms<T>(path, { value: empty }, timeoutMs);
 }
 
 function localizedPath(path: string, locale: Locale) {
@@ -552,27 +599,28 @@ function parseGlobalData(
   };
 }
 
-// Transport failures must escape these loaders. Next.js keeps the last
-// successful cached response when revalidation fails; returning static data
-// here would turn an outage into a successful fallback cache update.
-export const getGlobalData = cache(async (locale: Locale = "en") => {
+// Failures escape the snapshot reader: never store fallback as a successful
+// refresh. The shell alone can use safe, code-managed contact/brand defaults
+// if this deployment has never obtained a valid global-settings snapshot.
+const getGlobalSnapshot = publicSnapshot("global", async (locale: Locale) => {
   const localeFallback = localizeHomepage(fallback, locale).global;
-  try {
-    const response = await optionalRequest<{ data: Record<string, unknown> | null }>(
+  const response = await optionalRequest<{ data: Record<string, unknown> | null }>(
       localizedPath(
         "/api/global-setting?populate=logo&populate=wechatQrCode&populate=whatsappQrCode&populate=contactMethods&populate=socialLinks",
         locale,
       ),
       { data: null },
-    );
-    return parseGlobalData(response.data ?? {}, localeFallback);
-  } catch (error) {
-    console.error("Strapi global settings revalidation failed; preserving CMS content.", error);
-    throw error;
-  }
+      Math.min(STRAPI_REQUEST_TIMEOUT_MS, 5000),
+  );
+  if (response.data !== null && (typeof response.data !== "object" || Array.isArray(response.data))) throw new Error("Invalid global settings response");
+  return parseGlobalData(response.data ?? {}, localeFallback);
 });
 
-export const getHomepageSettings = cache(async (
+export const getGlobalData = cache(async (locale: Locale = "en") =>
+  optionalDecoration("global", () => getGlobalSnapshot(locale), localizeHomepage(fallback, locale).global),
+);
+
+export const getHomepageSettings = publicSnapshot("home", async (
   locale: Locale = "en",
 ): Promise<Omit<HomepageData, "global" | "courses" | "articles" | "testimonials">> => {
   const localeFallback = localizeHomepage(fallback, locale);
@@ -580,6 +628,7 @@ export const getHomepageSettings = cache(async (
     localizedPath("/api/home-page?populate[heroSlides][populate]=image&populate[seo][populate]=shareImage", locale),
     { data: null },
   );
+  if (response.data !== null && (typeof response.data !== "object" || Array.isArray(response.data))) throw new Error("Invalid homepage settings response");
   const home = response.data ?? {};
   const rawSlides = Array.isArray(home.heroSlides) ? home.heroSlides as Array<Record<string, unknown>> : [];
   const slides = rawSlides.filter((slide) => slide.enabled !== false).map((slide, index) => ({
@@ -620,10 +669,12 @@ export const getCourseCatalogData = cache(async (locale: Locale = "en"): Promise
   }));
 });
 
-export const getTestimonialsData = cache(async (locale: Locale = "en"): Promise<TestimonialData[]> => {
+export const getTestimonialsData = publicSnapshot("testimonials", async (locale: Locale = "en"): Promise<TestimonialData[]> => {
   const response = await request<{ data: Array<Record<string, unknown>> }>(
     localizedPath("/api/testimonials?populate=avatar&sort=sortOrder:asc&filters[enabled][$eq]=true&pagination[limit]=8", locale),
+    Math.min(STRAPI_REQUEST_TIMEOUT_MS, 8000),
   );
+  if (!Array.isArray(response.data)) throw new Error("Invalid testimonial response");
   // An empty CMS list is genuinely empty; do not publish sample student stories.
   return response.data.map((item, index) => ({
     id: String(item.documentId ?? item.id),
@@ -641,13 +692,15 @@ export const getTestimonialsData = cache(async (locale: Locale = "en"): Promise<
   }));
 });
 
-const getHomepageKnowledgeCards = cache(async (locale: Locale): Promise<ArticleData[]> => {
+const getHomepageKnowledgeCards = publicSnapshot("category-covers", async (locale: Locale): Promise<ArticleData[]> => {
   const cards = localizeHomepage(fallback, locale).articles;
   // The homepage uses only the four category-card covers, not article bodies.
   const filters = cards.map((card, index) => "&filters[slug][$in][" + index + "]=" + encodeURIComponent(card.slug)).join("");
   const response = await request<{ data: Array<Record<string, unknown>> }>(
     localizedPath("/api/articles?fields[0]=slug&fields[1]=imageAlt&populate[cover]=true&status=published&pagination[pageSize]=4" + filters, locale),
+    Math.min(STRAPI_REQUEST_TIMEOUT_MS, 5000),
   );
+  if (!Array.isArray(response.data)) throw new Error("Invalid category cover response");
   return cards.map((card) => {
     const article = response.data.find((item) => item.slug === card.slug);
     return {
@@ -663,8 +716,8 @@ export const getHomepageData = cache(async (locale: Locale = "en"): Promise<Home
     getHomepageSettings(locale),
     getGlobalData(locale),
     getCourseCatalogData(locale),
-    getHomepageKnowledgeCards(locale),
-    getTestimonialsData(locale),
+    optionalDecoration("category-covers", () => getHomepageKnowledgeCards(locale), localizeHomepage(fallback, locale).articles),
+    optionalDecoration("testimonials", () => getTestimonialsData(locale), []),
   ]);
   return { ...settings, global, courses, articles, testimonials };
 });
@@ -679,7 +732,10 @@ export const getCourseDetailData = cache(async function getCourseDetailData(
   ]);
   const raw = records.find((item) => item.slug === slug);
   if (!raw) return null;
-  const [global, testimonials] = await Promise.all([getGlobalData(locale), getTestimonialsData(locale)]);
+  const [global, testimonials] = await Promise.all([
+    getGlobalData(locale),
+    optionalDecoration("testimonials", () => getTestimonialsData(locale), []),
+  ]);
   const fallbackCourse = catalog.find((item) => item.slug === slug);
   try {
     const base = fallbackCourse ?? {
@@ -781,6 +837,7 @@ const getPublishedArticleRecords = cache(async (locale: Locale) => {
       `/api/articles?populate[cover]=true&populate[category]=true&populate[seo][populate]=shareImage&sort=publishDate:desc,id:desc&status=published&pagination[pageSize]=100&pagination[page]=${page}`,
       locale,
     ));
+    if (!Array.isArray(response.data)) throw new Error("Invalid article catalog response");
     records.push(...response.data);
     pageCount = response.meta?.pagination?.pageCount ?? 1;
     page += 1;
@@ -789,12 +846,27 @@ const getPublishedArticleRecords = cache(async (locale: Locale) => {
 });
 
 const getBuiltinArticleOverrideSlugs = cache(async (locale: Locale) => {
-  const response = await optionalRequest<{ data: string[] }>(
+  // This is an ownership manifest, not optional decoration. Even 404 must
+  // retain the old snapshot/fail closed instead of reviving withdrawn guides.
+  const response = await request<{ data: string[] }>(
     localizedPath("/api/articles/builtin-overrides", locale),
-    { data: [] },
   );
   if (!Array.isArray(response.data)) throw new Error("Invalid built-in article override response");
   return response.data.filter((slug) => typeof slug === "string" && Object.hasOwn(editorialGuides, slug));
+});
+
+// Refresh article bodies and the ownership/withdrawal list atomically. Caching
+// each endpoint independently could revive a removed built-in guide if only
+// one endpoint refreshes successfully. The anonymous API excludes member bodies.
+const getKnowledgeSnapshot = publicSnapshot("knowledge", async (locale: Locale) => {
+  const [records, builtinOverrides] = await Promise.all([
+    getPublishedArticleRecords(locale),
+    getBuiltinArticleOverrideSlugs(locale),
+  ]);
+  return {
+    records: records.filter((article) => article.enabled !== false && (article.accessLevel == null || article.accessLevel === "public")),
+    ownedSlugs: [...new Set([...records.map((article) => String(article.slug ?? "")), ...builtinOverrides])],
+  };
 });
 
 export const getKnowledgeArticles = cache(async function getKnowledgeArticles(
@@ -802,10 +874,7 @@ export const getKnowledgeArticles = cache(async function getKnowledgeArticles(
   locale: Locale = "en",
 ) {
   try {
-    const [records, builtinOverrides] = await Promise.all([
-      getPublishedArticleRecords(locale),
-      getBuiltinArticleOverrideSlugs(locale),
-    ]);
+    const { records, ownedSlugs } = await getKnowledgeSnapshot(locale);
     const belongsToCategory = (article: Record<string, unknown>) => {
       const relation = article.category as Record<string, unknown> | null | undefined;
       return relation?.slug ? String(relation.slug) === category : String(article.slug ?? "") === category;
@@ -814,7 +883,7 @@ export const getKnowledgeArticles = cache(async function getKnowledgeArticles(
     const remoteArticles = matchingArticles.map((article, index) => ({ ...parseArticle(article, index, category), categoryName: knowledgeCategories[category][locale].title }));
     // CMS ownership persists for the curated URLs even when the public API
     // hides the record because it is disabled, private or no longer published.
-    const remoteSlugs = new Set([...records.map((article) => String(article.slug ?? "")), ...builtinOverrides]);
+    const remoteSlugs = new Set(ownedSlugs);
     const fallbackArticles = getFallbackKnowledgeArticles(category, locale).filter((article) => !remoteSlugs.has(article.slug));
     return [...remoteArticles, ...fallbackArticles];
   } catch (error) {
@@ -837,7 +906,7 @@ export function isIndexableArticle(article: ArticleDetailData) {
 
 export async function getArticleLanguagePaths(article: ArticleDetailData, category: KnowledgeCategorySlug, locale: Locale) {
   const otherLocale = locale === "en" ? "zh" : "en";
-  const otherArticles = await getKnowledgeArticles(category, otherLocale);
+  const otherArticles = await optionalDecoration("article-language-links", () => getKnowledgeArticles(category, otherLocale), []);
   const translation = otherArticles.find((item) => item.id === article.id)
     ?? otherArticles.find((item) => item.slug === article.slug);
   const paths: Array<{ locale: Locale; path: string }> = [
@@ -848,3 +917,24 @@ export async function getArticleLanguagePaths(article: ArticleDetailData, catego
   }
   return paths;
 }
+
+export const getCourseLanguagePaths = cache(async (id: string, slug: string, locale: Locale) => {
+  const otherLocale: Locale = locale === "en" ? "zh" : "en";
+  const otherCourses = await optionalDecoration("course-language-links", () => getCourseCatalogData(otherLocale), []);
+  const translation = otherCourses.find((item) => item.id === id)
+    ?? otherCourses.find((item) => item.slug === slug);
+  const paths: Array<{ locale: Locale; path: string }> = [{ locale, path: `/${locale}/courses/${slug}` }];
+  if (translation && translation.seo?.noIndex !== true) paths.push({ locale: otherLocale, path: `/${otherLocale}/courses/${translation.slug}` });
+  return paths;
+});
+
+export const getHomepageLanguagePaths = cache(async (locale: Locale) => {
+  const otherLocale: Locale = locale === "en" ? "zh" : "en";
+  const [current, other] = await Promise.all([
+    getHomepageSettings(locale),
+    optionalDecoration("home-language-links", () => getHomepageSettings(otherLocale), null),
+  ]);
+  return [{ locale, settings: current }, { locale: otherLocale, settings: other }]
+    .filter((item) => item.settings && item.settings.seo?.noIndex !== true)
+    .map((item) => ({ locale: item.locale, path: `/${item.locale}` }));
+});

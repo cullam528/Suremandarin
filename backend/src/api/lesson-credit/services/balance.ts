@@ -40,10 +40,17 @@ export async function getLessonHourSummary(strapi: any, userId: unknown) {
   return { remaining: available + reserved, available, reserved };
 }
 
-export async function syncLessonHoursBalance(strapi: any, userId: unknown) {
+async function reconcileLessonHoursBalance(strapi: any, userId: unknown, storedBalance?: unknown) {
   const id = asId(userId);
   if (!id || syncingUsers.has(id)) return;
   const summary = await getLessonHourSummary(strapi, id);
+  // Bootstrap already reads this decimal field. Still verify every member's
+  // actual credit ledger, but avoid a no-op write and its user lifecycle hooks.
+  // Null, missing or malformed balances must be repaired, including zero.
+  const current = typeof storedBalance === 'number'
+    || (typeof storedBalance === 'string' && storedBalance.trim() !== '')
+    ? Number(storedBalance) : NaN;
+  if (Number.isFinite(current) && current === summary.remaining) return;
   syncingUsers.add(id);
   try {
     await strapi.db.query(USER_UID).update({
@@ -53,6 +60,11 @@ export async function syncLessonHoursBalance(strapi: any, userId: unknown) {
   } finally {
     syncingUsers.delete(id);
   }
+}
+
+export async function syncLessonHoursBalance(strapi: any, userId: unknown) {
+  // Credit mutations retain the existing unconditional reconciliation behavior.
+  await reconcileLessonHoursBalance(strapi, userId);
 }
 
 export async function validateLessonHoursTarget(strapi: any, userId: unknown, targetValue: unknown) {
@@ -123,6 +135,6 @@ export async function adjustLessonHoursBalance(strapi: any, userId: unknown, tar
 }
 
 export async function syncAllLessonHoursBalances(strapi: any) {
-  const users = await strapi.db.query(USER_UID).findMany({ select: ['id'] });
-  for (const user of users) await syncLessonHoursBalance(strapi, user.id);
+  const users = await strapi.db.query(USER_UID).findMany({ select: ['id', 'lessonHoursBalance'] });
+  for (const user of users) await reconcileLessonHoursBalance(strapi, user.id, user.lessonHoursBalance);
 }

@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { Apple, ArrowRight, ExternalLink, Globe2, Share2, Smartphone } from "lucide-react";
 import type { Locale } from "@/lib/i18n";
-import { getHomepageData, type GlobalData } from "@/lib/strapi";
+import { getGlobalData, type GlobalData } from "@/lib/strapi";
 
 function validSocialUrl(value?: string) {
   if (!value || !/^https?:\/\/\S+$/i.test(value.trim())) return undefined;
@@ -25,7 +25,7 @@ export async function AppShowcase({
   const zh = locale === "zh";
   const Heading = headingLevel === 1 ? "h1" : "h2";
   const Subheading = headingLevel === 1 ? "h2" : "h3";
-  const global = settings ?? (await getHomepageData(locale)).global;
+  const global = settings ?? await getGlobalData(locale);
   const configured = new Map(
     global.socialLinks.map((item) => [item.platform.trim().toLowerCase(), validSocialUrl(item.url)]),
   );

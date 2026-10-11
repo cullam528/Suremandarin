@@ -35,8 +35,11 @@ const nextConfig: NextConfig = {
   },
   // Keep icon imports tree-shakeable in every client bundle.
   experimental: {
+    // Localized and legacy entrypoints use separate document roots.
+    globalNotFound: true,
     optimizePackageImports: ["lucide-react"],
     // Avoid a build-time request burst against the small Strapi instance.
+    cpus: 2,
     staticGenerationMaxConcurrency: 2,
     staticGenerationMinPagesPerWorker: 32,
   },

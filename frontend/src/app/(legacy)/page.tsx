@@ -1,5 +1,5 @@
 import { cookies, headers } from "next/headers";
-import { redirect } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 
 type SupportedLocale = "en" | "zh";
 
@@ -33,16 +33,34 @@ function getPreferredLocale(acceptLanguage: string): SupportedLocale {
   return "en";
 }
 
-export default async function RootPage() {
+export default async function RootPage({
+  searchParams,
+}: {
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}) {
+  const query = await searchParams;
+  // These query keys were routes in the retired CMS, not homepage campaigns.
+  // Do not turn missing legacy articles/directories into homepage soft 404s.
+  if (Object.keys(query).some((key) => /^(?:article|industry|gbook)\//i.test(key))) {
+    notFound();
+  }
+
+  const forwardedQuery = new URLSearchParams();
+  for (const [key, value] of Object.entries(query)) {
+    if (Array.isArray(value)) value.forEach((item) => forwardedQuery.append(key, item));
+    else if (value !== undefined) forwardedQuery.append(key, value);
+  }
+  const queryString = forwardedQuery.toString();
+  const suffix = queryString ? `?${queryString}` : "";
   const cookieStore = await cookies();
   const savedLocale = cookieStore.get("suremandarin_locale")?.value;
 
   if (savedLocale === "en" || savedLocale === "zh") {
-    redirect(`/${savedLocale}`);
+    redirect(`/${savedLocale}${suffix}`);
   }
 
   const headerStore = await headers();
   const locale = getPreferredLocale(headerStore.get("accept-language") ?? "");
 
-  redirect(`/${locale}`);
+  redirect(`/${locale}${suffix}`);
 }

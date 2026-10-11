@@ -8,6 +8,7 @@ import {
 } from './api/lesson-credit/services/balance';
 import { appApiDocumentation } from './documentation/app-api';
 import { LINKEDIN_SCOPES, linkedinAuthCallback } from './utils/linkedin-auth';
+import { runBootstrapStep } from './utils/bootstrap-step';
 
 const courses = [
   ['Private Course','private'], ['Group Course','group'], ['Learn & Travel Course','learn-travel'],
@@ -1518,28 +1519,29 @@ export default {
         }
       },
     });
-    await ensureContentLocales(strapi);
-    await migrateArticleBodiesToBlockNote(strapi);
-    await ensureAdminLocalePermissions(strapi);
-    await ensureEditorMarketingPermissions(strapi);
-    await ensurePublicReadPermissions(strapi);
-    await ensureAccountOverviewPermission(strapi);
-    await ensureDailyProgressPermission(strapi);
-    await ensureLessonBookingPermission(strapi);
-    await ensureArticleContentManagerLayout(strapi);
-    await ensureUserContentManagerLayout(strapi);
-    await ensureArticleSeoPermissions(strapi);
-    await syncAllLessonHoursBalances(strapi);
+    const step = (name: string, task: () => Promise<unknown>) => runBootstrapStep(strapi.log, name, task);
+    await step('ensure-content-locales', () => ensureContentLocales(strapi));
+    await step('migrate-article-bodies', () => migrateArticleBodiesToBlockNote(strapi));
+    await step('ensure-admin-locale-permissions', () => ensureAdminLocalePermissions(strapi));
+    await step('ensure-editor-marketing-permissions', () => ensureEditorMarketingPermissions(strapi));
+    await step('ensure-public-read-permissions', () => ensurePublicReadPermissions(strapi));
+    await step('ensure-account-overview-permission', () => ensureAccountOverviewPermission(strapi));
+    await step('ensure-daily-progress-permission', () => ensureDailyProgressPermission(strapi));
+    await step('ensure-lesson-booking-permission', () => ensureLessonBookingPermission(strapi));
+    await step('ensure-article-editor-layout', () => ensureArticleContentManagerLayout(strapi));
+    await step('ensure-user-editor-layout', () => ensureUserContentManagerLayout(strapi));
+    await step('ensure-article-seo-permissions', () => ensureArticleSeoPermissions(strapi));
+    await step('reconcile-member-lesson-balances', () => syncAllLessonHoursBalances(strapi));
     setTimeout(() => {
       ensureArticleContentManagerLayout(strapi).catch(() => undefined);
       ensureUserContentManagerLayout(strapi).catch(() => undefined);
       ensureArticleSeoPermissions(strapi).catch(() => undefined);
     }, 2000);
-    await ensureTestimonialSubmitPermission(strapi);
-    await configurePasswordResetEmail(strapi);
-    await configureSocialProviders(strapi);
-    await ensureChineseHomePage(strapi);
-    await repairEnglishHomePagePublication(strapi);
+    await step('ensure-testimonial-submit-permission', () => ensureTestimonialSubmitPermission(strapi));
+    await step('configure-password-reset-email', () => configurePasswordResetEmail(strapi));
+    await step('configure-social-providers', () => configureSocialProviders(strapi));
+    await step('ensure-chinese-homepage', () => ensureChineseHomePage(strapi));
+    await step('repair-english-homepage-publication', () => repairEnglishHomePagePublication(strapi));
 
     if (process.env.SEED_INITIAL_DATA !== 'true') return;
 

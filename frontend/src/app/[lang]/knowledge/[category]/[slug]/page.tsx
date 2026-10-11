@@ -15,7 +15,7 @@ export async function generateMetadata({
   params: Promise<{ lang: string; category: string; slug: string }>;
 }): Promise<Metadata> {
   const { lang, category, slug } = await params;
-  if (!isLocale(lang) || !(category in knowledgeCategories)) return {};
+  if (!isLocale(lang) || !Object.hasOwn(knowledgeCategories, category)) notFound();
   const article = await getKnowledgeArticle(
     slug,
     category as KnowledgeCategorySlug,
@@ -47,7 +47,7 @@ export default async function KnowledgeArticlePage({
   params: Promise<{ lang: string; category: string; slug: string }>;
 }) {
   const { lang, category, slug } = await params;
-  if (!isLocale(lang) || !(category in knowledgeCategories)) notFound();
+  if (!isLocale(lang) || !Object.hasOwn(knowledgeCategories, category)) notFound();
   const categorySlug = category as KnowledgeCategorySlug;
   const article = await getKnowledgeArticle(slug, categorySlug, lang);
   if (!article) notFound();

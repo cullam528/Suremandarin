@@ -1,16 +1,8 @@
-import type { Metadata } from "next";
+/* eslint-disable @next/next/no-head-element -- Shared App Router root document; the native IE detector must execute before hydration. */
 import Image from "next/image";
 import { Plus_Jakarta_Sans } from "next/font/google";
-import {
-  absoluteUrl,
-  bingSiteVerification,
-  googleSiteVerification,
-  indexingAllowed,
-  seoCopy,
-  siteName,
-  siteUrl,
-} from "@/lib/seo";
-import "./globals.css";
+import type { Locale } from "@/lib/i18n";
+import "@/app/globals.css";
 
 const jakarta = Plus_Jakarta_Sans({ subsets: ["latin"], variable: "--font-jakarta" });
 
@@ -32,67 +24,14 @@ const legacyInternetExplorerDetector = `(function () {
   (document.getElementsByTagName("head")[0] || root).appendChild(style);
 })();`;
 
-export const metadata: Metadata = {
-  metadataBase: new URL(siteUrl),
-  title: seoCopy.en.title,
-  description: seoCopy.en.description,
-  applicationName: siteName,
-  authors: [{ name: siteName, url: siteUrl }],
-  creator: siteName,
-  publisher: siteName,
-  category: "education",
-  alternates: {
-    canonical: absoluteUrl("/en"),
-    languages: {
-      en: absoluteUrl("/en"),
-      "zh-Hans": absoluteUrl("/zh"),
-      "x-default": absoluteUrl("/en"),
-    },
-  },
-  openGraph: {
-    type: "website",
-    siteName,
-    title: seoCopy.en.title,
-    description: seoCopy.en.description,
-    url: absoluteUrl("/en"),
-    locale: "en_US",
-    alternateLocale: ["zh_CN"],
-    images: [
-      {
-        url: absoluteUrl("/images/hero-global-learners.webp"),
-        alt: "SureMandarin Chinese learning",
-      },
-    ],
-  },
-  twitter: {
-    card: "summary_large_image",
-    title: seoCopy.en.title,
-    description: seoCopy.en.description,
-    images: [absoluteUrl("/images/hero-global-learners.webp")],
-  },
-  robots: {
-    index: indexingAllowed,
-    follow: indexingAllowed,
-    "max-image-preview": "large",
-    "max-snippet": -1,
-    "max-video-preview": -1,
-    googleBot: {
-      index: indexingAllowed,
-      follow: indexingAllowed,
-      "max-image-preview": "large",
-      "max-snippet": -1,
-      "max-video-preview": -1,
-    },
-  },
-  verification: {
-    ...(googleSiteVerification ? { google: googleSiteVerification } : {}),
-    ...(bingSiteVerification ? { other: { "msvalidate.01": bingSiteVerification } } : {}),
-  },
-};
-
-export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
+// Root layouts pass route params here; request headers/cookies are deliberately
+// not read, so public localized pages can keep their existing SSG/ISR behavior.
+export default function DocumentLayout({ children, locale }: Readonly<{
+  children: React.ReactNode;
+  locale: Locale;
+}>) {
   return (
-    <html lang="en" suppressHydrationWarning>
+    <html lang={locale === "zh" ? "zh-CN" : "en"} suppressHydrationWarning>
       <head>
         <script
           id="legacy-ie-detection"

@@ -19,23 +19,48 @@ function source(name) {
   return compiled.get(name);
 }
 
-function loader({ courses = {}, articles = {}, homes = {}, testimonials = {}, failPath, overrideStatus = 200, guardedArticleApi = false } = {}) {
+function loader({ courses = {}, articles = {}, homes = {}, globals = {}, testimonials = {}, failPath, failLocale, overrideStatus = 200, guardedArticleApi = false } = {}) {
   const modules = new Map();
   const requests = [];
+  const requestCaches = [];
+  const snapshots = new Map();
+  const controls = { failPath, failLocale, overrideStatus };
   const cache = (fn) => {
     const results = new Map();
+    requestCaches.push(results);
     return (...args) => {
       const key = JSON.stringify(args);
       if (!results.has(key)) results.set(key, fn(...args));
       return results.get(key);
     };
   };
-  const fetch = async (input) => {
+  // A deterministic snapshot adapter tests the loaders' cache boundaries.
+  // Real Next cache semantics are covered separately in public-cache-runtime.
+  const unstable_cache = (fn, parts, options) => {
+    assert.equal(options.revalidate, 60);
+    assert(parts.includes('https://cms.example.test'));
+    return async (...args) => {
+      const key = JSON.stringify([parts, args]);
+      const entry = snapshots.get(key);
+      if (entry && !entry.stale) return entry.value;
+      try {
+        const value = JSON.parse(JSON.stringify(await fn(...args)));
+        snapshots.set(key, { value, stale: false });
+        return value;
+      } catch (error) {
+        if (entry) return entry.value;
+        throw error;
+      }
+    };
+  };
+  const fetch = async (input, options) => {
     const url = new URL(input);
     assert.equal(url.origin, 'https://cms.example.test');
+    assert.equal(options.cache, 'no-store');
+    assert.equal(options.headers.Authorization, undefined);
     requests.push(url);
-    if (url.pathname === failPath) throw new Error('Simulated CMS outage');
     const locale = url.searchParams.get('locale') || 'en';
+    if (url.pathname === controls.failPath && (!controls.failLocale || controls.failLocale === locale)) throw new Error('Simulated CMS outage');
     let data;
     let meta;
     if (url.pathname === '/api/courses' || url.pathname === '/api/articles') {
@@ -48,11 +73,11 @@ function loader({ courses = {}, articles = {}, homes = {}, testimonials = {}, fa
       data = records.slice((page - 1) * pageSize, page * pageSize);
       meta = { pagination: { page, pageSize, pageCount: Math.ceil(records.length / pageSize), total: records.length } };
     } else if (url.pathname === '/api/articles/builtin-overrides') {
-      if (overrideStatus !== 200) return { ok: false, status: overrideStatus, json: async () => ({ error: 'Unavailable endpoint' }) };
+      if (controls.overrideStatus !== 200) return { ok: false, status: controls.overrideStatus, json: async () => ({ error: 'Unavailable endpoint' }) };
       const known = new Set(Object.keys(load('editorial-guides').editorialGuides));
       data = [...new Set((articles[locale] || []).filter((record) => known.has(record.slug)).map((record) => record.slug))];
     } else if (url.pathname === '/api/home-page') data = homes[locale] || null;
-    else if (url.pathname === '/api/global-setting') data = null;
+    else if (url.pathname === '/api/global-setting') data = globals[locale] || null;
     else if (url.pathname === '/api/testimonials') data = testimonials[locale] || [];
     else throw new Error(`Unexpected request: ${url.pathname}`);
     return { ok: true, status: 200, json: async () => ({ data, meta }) };
@@ -62,11 +87,13 @@ function loader({ courses = {}, articles = {}, homes = {}, testimonials = {}, fa
     const loadedModule = { exports: {} };
     modules.set(name, loadedModule.exports);
     const sandbox = {
-      exports: loadedModule.exports, fetch, AbortSignal,
+      exports: loadedModule.exports, fetch, AbortSignal, URL,
       process: { env: { STRAPI_URL: 'https://cms.example.test' } },
       console: { error() {}, warn() {}, log() {} },
       require(request) {
         if (request === 'react') return { cache };
+        if (request === 'next/cache') return { unstable_cache };
+        if (request === 'server-only') return {};
         assert(request.startsWith('@/lib/'), `Unexpected module: ${request}`);
         return load(request.slice('@/lib/'.length));
       },
@@ -74,7 +101,13 @@ function loader({ courses = {}, articles = {}, homes = {}, testimonials = {}, fa
     vm.runInNewContext(source(name), sandbox, { filename: `${name}.ts` });
     return loadedModule.exports;
   }
-  return { api: load('strapi'), requests };
+  return {
+    api: load('strapi'), requests, controls,
+    nextRender({ stale = true } = {}) {
+      requestCaches.forEach((results) => results.clear());
+      if (stale) snapshots.forEach((entry) => { entry.stale = true; });
+    },
+  };
 }
 
 function course(slug, overrides = {}) {
@@ -269,10 +302,77 @@ test('curated code-managed guides retain authored content without fabricated pub
   }
 });
 
-test('CMS transport failures reject instead of publishing a successful fallback response', async () => {
+test('core CMS transport failures reject, while category cover outages do not break the home', async () => {
   const { api } = loader({ failPath: '/api/articles' });
   await assert.rejects(() => api.getKnowledgeArticles('study-tips', 'en'), /Simulated CMS outage/);
-  await assert.rejects(() => api.getHomepageData('en'), /Simulated CMS outage/);
+  assert.equal((await api.getHomepageData('en')).articles.length, 4);
+  const core = loader({ failPath: '/api/courses' });
+  await assert.rejects(() => core.api.getHomepageData('en'), /Simulated CMS outage/);
+});
+
+test('global settings and testimonials cannot break a published course or homepage on first read', async () => {
+  for (const failPath of ['/api/global-setting', '/api/testimonials']) {
+    const { api } = loader({ courses: { en: [course('private-course')] }, failPath });
+    const home = await api.getHomepageData('en');
+    const detail = await api.getCourseDetailData('private-course', 'en');
+    assert.equal(home.courses.length, 1);
+    assert.equal(detail.course.slug, 'private-course');
+    if (failPath === '/api/testimonials') assert.equal(detail.testimonials.length, 0);
+  }
+});
+
+test('a successfully cached home and course survive subsequent CMS transport failures', async () => {
+  const fixture = loader({ homes: { en: { pageTitle: 'Real editor title', seo: { noIndex: true } } }, courses: { en: [course('private-course')] } });
+  await fixture.api.getHomepageData('en');
+  for (const failPath of ['/api/home-page', '/api/courses', '/api/global-setting']) {
+    fixture.controls.failPath = failPath;
+    fixture.nextRender();
+    const home = await fixture.api.getHomepageData('en');
+    assert.equal(home.pageTitle, 'Real editor title');
+    assert.equal(home.seo.noIndex, true);
+    assert.equal(home.courses.length, 1);
+  }
+});
+
+test('successfully withdrawn courses replace old snapshots and stay withdrawn during a later outage', async () => {
+  const courses = { en: [course('private-course')] };
+  const fixture = loader({ courses });
+  assert.equal((await fixture.api.getCourseCatalogData('en')).length, 1);
+  courses.en[0].enabled = false;
+  fixture.nextRender();
+  assert.equal((await fixture.api.getCourseCatalogData('en')).length, 0);
+  fixture.controls.failPath = '/api/courses';
+  fixture.nextRender();
+  assert.equal((await fixture.api.getCourseCatalogData('en')).length, 0);
+  assert.equal(await fixture.api.getCourseDetailData('private-course', 'en'), null);
+});
+
+test('article data and ownership refresh atomically; confirmed withdrawals never revive code guides', async () => {
+  const articles = { en: [article('how-to-practise-tones', { title: 'Real CMS guide' })] };
+  const fixture = loader({ articles, guardedArticleApi: true });
+  assert.equal((await fixture.api.getKnowledgeArticle('how-to-practise-tones', 'study-tips', 'en')).title, 'Real CMS guide');
+  articles.en[0].enabled = false;
+  fixture.controls.overrideStatus = 503;
+  fixture.nextRender();
+  // A half-successful refresh must retain the entire last public snapshot,
+  // rather than mixing an empty live catalog with missing ownership markers.
+  assert.equal((await fixture.api.getKnowledgeArticle('how-to-practise-tones', 'study-tips', 'en')).title, 'Real CMS guide');
+  fixture.controls.overrideStatus = 200;
+  fixture.nextRender();
+  assert.equal(await fixture.api.getKnowledgeArticle('how-to-practise-tones', 'study-tips', 'en'), null);
+  fixture.controls.failPath = '/api/articles';
+  fixture.nextRender();
+  assert.equal(await fixture.api.getKnowledgeArticle('how-to-practise-tones', 'study-tips', 'en'), null);
+});
+
+test('another locale failing cannot break current article, course or home metadata links', async () => {
+  const articleFixture = loader({ articles: { en: [article('real-post')] }, failPath: '/api/articles', failLocale: 'zh' });
+  const post = await articleFixture.api.getKnowledgeArticle('real-post', 'study-tips', 'en');
+  assert.equal((await articleFixture.api.getArticleLanguagePaths(post, 'study-tips', 'en')).length, 1);
+  const courseFixture = loader({ courses: { en: [course('private-course')] }, failPath: '/api/courses', failLocale: 'zh' });
+  assert.equal((await courseFixture.api.getCourseLanguagePaths('course-private-course', 'private-course', 'en')).length, 1);
+  const homeFixture = loader({ failPath: '/api/home-page', failLocale: 'zh' });
+  assert.equal((await homeFixture.api.getHomepageLanguagePaths('en')).length, 1);
 });
 
 test('a withdrawn curated CMS guide cannot resurrect through code fallback when the public API hides it', async () => {
@@ -300,9 +400,14 @@ test('builtin CMS ownership is locale-specific and published CMS content continu
   assert(chineseOnly.api.isIndexableArticle(await chineseOnly.api.getKnowledgeArticle('how-to-practise-tones', 'study-tips', 'en')));
 });
 
-test('an old backend 404 permits staggered deployment, but override endpoint outages do not recreate withdrawn guides', async () => {
-  const older = loader({ overrideStatus: 404 });
-  assert(older.api.isIndexableArticle(await older.api.getKnowledgeArticle('how-to-practise-tones', 'study-tips', 'en')));
-  const outage = loader({ overrideStatus: 503 });
-  await assert.rejects(() => outage.api.getKnowledgeArticle('how-to-practise-tones', 'study-tips', 'en'), /Strapi request failed: 503/);
+test('missing or failed ownership endpoints fail closed rather than recreate withdrawn guides', async () => {
+  for (const overrideStatus of [404, 503]) {
+    const outage = loader({ overrideStatus });
+    await assert.rejects(() => outage.api.getKnowledgeArticle('how-to-practise-tones', 'study-tips', 'en'), /Strapi request failed/);
+  }
+  const cached = loader({ articles: { en: [article('how-to-practise-tones', { enabled: false })] }, guardedArticleApi: true });
+  assert.equal(await cached.api.getKnowledgeArticle('how-to-practise-tones', 'study-tips', 'en'), null);
+  cached.controls.overrideStatus = 404;
+  cached.nextRender();
+  assert.equal(await cached.api.getKnowledgeArticle('how-to-practise-tones', 'study-tips', 'en'), null);
 });

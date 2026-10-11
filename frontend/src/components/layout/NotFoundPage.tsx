@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { ArrowLeft, Home, SearchX } from "lucide-react";
 
-export default function NotFound() {
+export default function NotFoundPage() {
   return (
     <main className="soft-gradient grid min-h-[calc(100vh-5rem)] place-items-center px-6 py-20">
       <section className="page-shell max-w-2xl text-center">
