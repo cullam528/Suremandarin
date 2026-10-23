@@ -23,7 +23,8 @@
     "externalEventId": {
       "type": "string",
       "required": true,
-      "unique": true
+      "unique": true,
+      "column": { "unique": true }
     },
     "eventType": {
       "type": "string",

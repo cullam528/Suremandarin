@@ -144,7 +144,9 @@ export function AccountSection({
                           {item.productName}
                         </td>
                         <td className="px-5 py-4 text-slate-600">
-                          {item.currency} {item.paidAmount ?? "—"}
+                          {item.paidAmount == null && ["paid", "completed"].includes(item.orderStatus)
+                            ? (zh ? "付款金额待核对" : "Payment amount under review")
+                            : `${item.currency} ${item.paidAmount ?? "—"}`}
                         </td>
                         <td className="px-5 py-4 font-bold text-brand-blue">
                           {item.orderStatus}

@@ -12,7 +12,10 @@
     "start": "strapi start",
     "strapi": "strapi",
     "upgrade": "npx @strapi/upgrade latest",
-    "upgrade:dry": "npx @strapi/upgrade latest --dry"
+    "upgrade:dry": "npx @strapi/upgrade latest --dry",
+    "test": "node --test tests/*.test.cjs src/api/*/controllers/*.test.cjs",
+    "test:payments": "node --test tests/payment*.test.cjs",
+    "typecheck": "tsc --noEmit"
   },
   "dependencies": {
     "@blocknote/ariakit": "0.52.1",

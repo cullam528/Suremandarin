@@ -95,6 +95,24 @@
     },
     "internalNotes": {
       "type": "text"
+    },
+    "externalPlanId": {
+      "type": "string"
+    },
+    "billingAmount": {
+      "type": "decimal"
+    },
+    "billingCurrency": {
+      "type": "string"
+    },
+    "lastPaypalEventAt": {
+      "type": "datetime"
+    },
+    "lastPaypalEventId": {
+      "type": "string"
+    },
+    "lastPaypalEventType": {
+      "type": "string"
     }
   }
 }

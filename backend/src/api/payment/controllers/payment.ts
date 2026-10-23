@@ -1,5 +1,6 @@
-import { evaluateReferralRewards, markReferralPayment } from '../../referral/services/referral-rewards';
-import { grantLessonCredit } from '../../lesson-credit/services/grant';
+import { evaluateReferralRewards } from '../../referral/services/referral-rewards';
+import { expectedOrderAmount, settlePayPalOrder } from '../services/settlement';
+import { processPayPalWebhook } from '../services/webhook';
 
 const money = (value: unknown) => Number(value ?? 0).toFixed(2);
 const orderNumber = () => `SM-${Date.now()}-${Math.random().toString(36).slice(2, 8).toUpperCase()}`;
@@ -22,25 +23,6 @@ async function attachReferralToOrder(userId: number, orderId: number, courseId?:
     });
   } catch (error) {
     strapi.log.warn(`Unable to attach referral to order: ${error instanceof Error ? error.message : String(error)}`);
-  }
-}
-
-async function grantMembership(userId: number, level: 'vip' | 'svip', subscriptionDocumentId: string, expiresAt?: string) {
-  await strapi.db.query('plugin::users-permissions.user').update({ where: { id: userId }, data: {
-    membershipLevel: level, membershipStatus: 'active', membershipStartedAt: new Date(),
-    membershipExpiresAt: expiresAt ? new Date(expiresAt) : null, autoRenew: true,
-    membershipChannel: 'paypal', lastPaymentAt: new Date(),
-  }});
-  const codes = level === 'svip'
-    ? ['article.vip.read','article.svip.read','course.basic.access','course.premium.access','video.download','support.priority']
-    : ['article.vip.read','course.basic.access','video.download'];
-  for (const code of codes) {
-    const existing = await strapi.documents('api::entitlement.entitlement').findMany({ filters: { user: { id: userId }, code, status: 'active' }, limit: 1 });
-    if (!existing.length) await strapi.documents('api::entitlement.entitlement').create({ data: {
-      user: userId, code, name: code, source: 'membership', subscription: subscriptionDocumentId,
-      startsAt: new Date().toISOString(), expiresAt, status: 'active', usedCount: 0,
-      platforms: ['web','miniprogram','ios','android'],
-    } as any });
   }
 }
 
@@ -80,7 +62,7 @@ export default {
     };
     ctx.body = {
       subscriptions: subscriptions.map((item: any) => ({ subscriptionNumber: item.subscriptionNumber, status: item.status, channel: item.channel, autoRenew: item.autoRenew, currentPeriodEnd: item.currentPeriodEnd, plan: item.plan ? { name: item.plan.name, code: item.plan.code } : null })),
-      orders: orders.map((item: any) => ({ orderNumber: item.orderNumber, productType: item.productType, productName: item.productNameSnapshot, paidAmount: item.paidAmount ?? item.unitPrice, currency: item.currency, orderStatus: item.orderStatus, paymentStatus: item.paymentStatus, paidAt: item.paidAt, createdAt: item.createdAt, lessonHours: Number(item.lessonHours ?? 0) })),
+      orders: orders.map((item: any) => ({ orderNumber: item.orderNumber, productType: item.productType, productName: item.productNameSnapshot, paidAmount: item.channel === 'paypal' && ['paid', 'completed'].includes(item.orderStatus) && !(Number(item.paidAmount) > 0) ? null : item.paidAmount ?? null, currency: item.currency, orderStatus: item.orderStatus, paymentStatus: item.paymentStatus, paidAt: item.paidAt, createdAt: item.createdAt, lessonHours: Number(item.lessonHours ?? 0) })),
       enrollments: enrollments.map((item: any) => ({ status: item.status, source: item.source, enrolledAt: item.enrolledAt, expiresAt: item.expiresAt, course: item.course ? { title: item.course.title, slug: item.course.slug, summary: item.course.summary } : null })),
       progress: progress.map((item: any) => ({ progressPercent: Number(item.progressPercent ?? 0), completed: Boolean(item.completed), lastStudiedAt: item.lastStudiedAt, course: item.course ? { title: item.course.title, slug: item.course.slug } : null, module: item.module ? { title: item.module.title } : null, lesson: item.lesson ? { title: item.lesson.title } : null })),
       lessonCredits: {
@@ -128,29 +110,25 @@ export default {
   async createPayPalOrder(ctx: any) {
     const user = ctx.state.user;
     if (!user) return ctx.unauthorized('Login required');
-    const { productType, planDocumentId, courseDocumentId, billingCycle = 'monthly', platform = 'web' } = ctx.request.body as Record<string, string>;
+    const { productType, courseDocumentId, platform = 'web' } = ctx.request.body as Record<string, string>;
     let product: any;
     let amount = 0;
     let currency = 'USD';
-    if (productType === 'membership' && planDocumentId) {
-      product = await strapi.documents('api::membership-plan.membership-plan').findOne({ documentId: planDocumentId, status: 'published' });
-      if (!product?.enabled) return ctx.badRequest('Membership plan is unavailable');
-      amount = Number(billingCycle === 'yearly' ? product.yearlyPrice : product.monthlyPrice);
-      currency = product.currency;
-    } else if (productType === 'course' && courseDocumentId) {
+    if (productType === 'membership') return ctx.badRequest('Use PayPal subscriptions for membership purchases');
+    if (productType === 'course' && courseDocumentId) {
       product = await strapi.documents('api::course.course').findOne({ documentId: courseDocumentId, status: 'published' });
       if (!product?.enabled || !product.allowStandalonePurchase) return ctx.badRequest('Course is unavailable for purchase');
       amount = Number(product.standalonePrice);
       currency = product.currency;
     } else return ctx.badRequest('Invalid product');
-    if (!(amount > 0)) return ctx.badRequest('Product price is invalid');
+    if (!Number.isFinite(amount) || !(amount > 0)) return ctx.badRequest('Product price is invalid');
 
     const number = orderNumber();
     const order = await strapi.documents('api::order.order').create({ data: {
       orderNumber: number,
       user: user.id,
       productType,
-      membershipPlan: productType === 'membership' ? product.documentId : null,
+      membershipPlan: null,
       course: productType === 'course' ? product.documentId : null,
       productNameSnapshot: product.name ?? product.title,
       lessonHours: productType === 'course' ? Number(product.lessonHours ?? 0) : 0,
@@ -176,51 +154,44 @@ export default {
     const user = ctx.state.user;
     if (!user) return ctx.unauthorized('Login required');
     const { paypalOrderId } = ctx.request.body as { paypalOrderId?: string };
-    if (!paypalOrderId) return ctx.badRequest('paypalOrderId is required');
+    if (typeof paypalOrderId !== 'string' || !paypalOrderId) return ctx.badRequest('paypalOrderId is required');
     const orders = await strapi.documents('api::order.order').findMany({ filters: { externalOrderId: paypalOrderId, user: { id: user.id } }, limit: 1 });
     const order = orders[0];
     if (!order) return ctx.notFound('Order not found');
-    const paypal = strapi.service('api::payment.paypal');
-    const result = await paypal.captureOrder(paypalOrderId, `${order.orderNumber}-capture`);
-    if (String(result.status ?? '').toUpperCase() === 'COMPLETED') {
-      const paidAt = new Date().toISOString();
-      await strapi.documents('api::order.order').update({
-        documentId: order.documentId,
-        data: {
-          orderStatus: 'paid',
-          paymentStatus: 'paid',
-          paidAmount: order.paidAmount ?? order.unitPrice,
-          paidAt,
-        } as any,
-      });
-      await markReferralPayment(strapi, { ...order, paidAt, orderStatus: 'paid', paymentStatus: 'paid' });
-      await evaluateReferralRewards(strapi, user.id);
-      const purchasedHours = Number(order.lessonHours ?? 0);
-      if (order.productType === 'course' && purchasedHours > 0) {
-        await grantLessonCredit(strapi, {
-          userId: user.id,
-          hours: purchasedHours * Number(order.quantity ?? 1),
-          source: 'purchase',
-          sourceKey: `purchase-order-v1:${order.documentId ?? order.id}`,
-          status: 'available',
-          notes: `Purchased lesson hours from order ${order.orderNumber}.`,
-        });
-      }
+    // Reject unsupported/terminal orders before any request that can collect funds.
+    if (order.channel !== 'paypal' || order.productType !== 'course'
+      || !['pending', 'awaiting-payment', 'paid', 'completed'].includes(String(order.orderStatus))
+      || !['unpaid', 'authorized', 'paid'].includes(String(order.paymentStatus))
+      || !['USD', 'CNY', 'EUR', 'GBP'].includes(String(order.currency))) {
+      return ctx.badRequest('Order requires reconciliation before payment');
     }
-    ctx.body = { orderNumber: order.orderNumber, paypalStatus: result.status, processing: true };
+    try { expectedOrderAmount(order); } catch { return ctx.badRequest('Invalid order payable amount'); }
+    const paypal = strapi.service('api::payment.paypal');
+    const result = order.paymentStatus === 'paid'
+      ? await paypal.getOrder(paypalOrderId)
+      : await paypal.captureOrder(paypalOrderId, `${order.orderNumber}-capture`);
+    ctx.body = await settlePayPalOrder(strapi, { paypalOrderId, userId: user.id, result });
   },
 
   async createPayPalSubscription(ctx: any) {
     const user = ctx.state.user;
     if (!user) return ctx.unauthorized('Login required');
     const { planDocumentId, billingCycle = 'monthly', returnUrl, cancelUrl } = ctx.request.body as Record<string, string>;
+    if (!['monthly', 'yearly'].includes(billingCycle)) return ctx.badRequest('Invalid billing cycle');
     const plan: any = await strapi.documents('api::membership-plan.membership-plan').findOne({ documentId: planDocumentId, status: 'published' });
     if (!plan?.enabled) return ctx.badRequest('Membership plan is unavailable');
     const paypalPlanId = billingCycle === 'yearly' ? plan.paypalYearlyPlanId : plan.paypalMonthlyPlanId;
     if (!paypalPlanId) return ctx.badRequest('PayPal plan is not configured');
+    const billingAmount = Number(billingCycle === 'yearly' ? plan.yearlyPrice : plan.monthlyPrice);
+    if (!['vip', 'svip'].includes(plan.code) || !Number.isFinite(billingAmount) || billingAmount <= 0) {
+      return ctx.badRequest('Membership plan pricing is invalid');
+    }
     const record: any = await strapi.documents('api::membership-subscription.membership-subscription').create({ data: {
       subscriptionNumber: subscriptionNumber(), user: user.id, plan: plan.documentId,
       channel: 'paypal', status: 'suspended', autoRenew: true,
+      externalPlanId: paypalPlanId,
+      billingAmount,
+      billingCurrency: plan.currency,
     } as any });
     const paypal = strapi.service('api::payment.paypal');
     const result = await paypal.createSubscription({
@@ -234,46 +205,20 @@ export default {
 
   async paypalWebhook(ctx: any) {
     const event = ctx.request.body as any;
-    const paypal = strapi.service('api::payment.paypal');
-    const headers = Object.fromEntries(Object.entries(ctx.headers).map(([key, value]) => [key, Array.isArray(value) ? value[0] : value]));
-    const valid = await paypal.verifyWebhook(headers, event);
-    if (!valid) return ctx.unauthorized('Invalid PayPal webhook signature');
-    const existing = await strapi.documents('api::webhook-event.webhook-event').findMany({ filters: { externalEventId: event.id }, limit: 1 });
-    if (existing.length) { ctx.body = { received: true, duplicate: true }; return; }
-    await strapi.documents('api::webhook-event.webhook-event').create({ data: {
-      provider: 'paypal', externalEventId: event.id, eventType: event.event_type,
-      receivedAt: new Date().toISOString(), signatureValid: true, processed: false,
-      processingAttempts: 0, payload: event,
-    } });
-    let processed = false;
-    try {
-      const externalSubscriptionId = event.resource?.id;
-      const subscriptionDocumentId = event.resource?.custom_id;
-      const subscriptionList: any[] = await strapi.documents('api::membership-subscription.membership-subscription').findMany({
-        filters: subscriptionDocumentId ? { documentId: subscriptionDocumentId } : { externalSubscriptionId },
-        populate: ['user','plan'], limit: 1,
-      } as any);
-      const subscription: any = subscriptionList[0];
-      if (subscription && event.event_type === 'BILLING.SUBSCRIPTION.ACTIVATED') {
-        const expiresAt = event.resource?.billing_info?.next_billing_time;
-        await strapi.documents('api::membership-subscription.membership-subscription').update({ documentId: subscription.documentId, data: {
-          status: 'active', startedAt: event.resource?.start_time ?? new Date().toISOString(),
-          currentPeriodEnd: expiresAt, nextBillingAt: expiresAt, lastPaidAt: new Date().toISOString(),
-        } as any });
-        await grantMembership(subscription.user.id, subscription.plan.code, subscription.documentId, expiresAt);
-        processed = true;
-      }
-      if (subscription && ['BILLING.SUBSCRIPTION.CANCELLED','BILLING.SUBSCRIPTION.EXPIRED','BILLING.SUBSCRIPTION.SUSPENDED'].includes(event.event_type)) {
-        const status = event.event_type.endsWith('CANCELLED') ? 'cancelled' : event.event_type.endsWith('EXPIRED') ? 'expired' : 'suspended';
-        await strapi.documents('api::membership-subscription.membership-subscription').update({ documentId: subscription.documentId, data: { status, autoRenew: false, cancelledAt: new Date().toISOString() } as any });
-        await strapi.db.query('plugin::users-permissions.user').update({ where: { id: subscription.user.id }, data: { membershipStatus: status, autoRenew: false } });
-        processed = true;
-      }
-    } catch (error) {
-      strapi.log.error(`PayPal webhook processing failed: ${error instanceof Error ? error.message : String(error)}`);
+    if (!event || typeof event.id !== 'string' || !event.id || typeof event.event_type !== 'string') {
+      return ctx.badRequest('Invalid PayPal webhook event');
     }
-    const log = await strapi.documents('api::webhook-event.webhook-event').findMany({ filters: { externalEventId: event.id }, limit: 1 });
-    if (log[0]) await strapi.documents('api::webhook-event.webhook-event').update({ documentId: log[0].documentId, data: { processed, processingAttempts: 1 } as any });
-    ctx.body = { received: true, processed };
+    try {
+      const paypal = strapi.service('api::payment.paypal');
+      const headers = Object.fromEntries(Object.entries(ctx.headers).map(([key, value]) => [key, Array.isArray(value) ? value[0] : value]));
+      const valid = await paypal.verifyWebhook(headers, event);
+      if (!valid) return ctx.unauthorized('Invalid PayPal webhook signature');
+      ctx.body = await processPayPalWebhook(strapi, event);
+    } catch (error) {
+      // Non-2xx is essential: PayPal only retries unsuccessful delivery.
+      strapi.log.error(`PayPal webhook ${event.id} processing failed`);
+      ctx.status = 503;
+      ctx.body = { received: true, processed: false, retryable: true };
+    }
   },
 };

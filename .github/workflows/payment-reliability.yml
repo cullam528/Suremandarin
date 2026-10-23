@@ -1,0 +1,109 @@
+name: Payment reliability
+
+on:
+  pull_request:
+    paths:
+      - 'backend/**'
+      - 'frontend/**'
+      - '.github/workflows/payment-reliability.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'backend/**'
+      - 'frontend/**'
+      - '.github/workflows/payment-reliability.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: payment-reliability-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  backend:
+    name: Backend tests, types and build
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    defaults:
+      run:
+        working-directory: backend
+    env:
+      DATABASE_CLIENT: sqlite
+      DATABASE_FILENAME: .tmp/ci-payments.sqlite
+      CRON_ENABLED: 'false'
+      STRAPI_TELEMETRY_DISABLED: 'true'
+      PAYPAL_ENV: sandbox
+    services:
+      postgres:
+        image: postgres:18-alpine
+        env:
+          POSTGRES_USER: payment_test
+          POSTGRES_PASSWORD: payment_test_only
+          POSTGRES_DB: payment_reliability
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U payment_test -d payment_reliability"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          persist-credentials: false
+      - uses: pnpm/action-setup@f40ffcd9367d9f12939873eb1018b921a783ffaa # v4
+        with:
+          version: 9.15.9
+          run_install: false
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+        with:
+          node-version: '24'
+          cache: pnpm
+          cache-dependency-path: backend/pnpm-lock.yaml
+      - name: Install locked dependencies
+        run: pnpm install --frozen-lockfile
+      - name: Run backend and disposable database tests
+        run: npm test
+      - name: Verify transactions and uniqueness on PostgreSQL
+        env:
+          # This disposable service contains synthetic fixtures only.
+          PAYMENT_TEST_DATABASE_URL: postgresql://payment_test:payment_test_only@127.0.0.1:5432/payment_reliability
+        run: node --test tests/payment-database.test.cjs
+      - name: Check backend types
+        run: npm run typecheck
+      - name: Build backend
+        run: npm run build
+
+  frontend:
+    name: Frontend tests and types
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: frontend
+    env:
+      NEXT_TELEMETRY_DISABLED: '1'
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          persist-credentials: false
+      - uses: pnpm/action-setup@f40ffcd9367d9f12939873eb1018b921a783ffaa # v4
+        with:
+          version: 9.15.9
+          run_install: false
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+        with:
+          node-version: '24'
+          cache: pnpm
+          cache-dependency-path: frontend/pnpm-lock.yaml
+      - name: Install locked dependencies
+        # The frontend is a single package; its pnpm 11 config omits a package list.
+        run: pnpm install --ignore-workspace --frozen-lockfile
+      - name: Run frontend tests without an external CMS
+        run: npm test
+      - name: Generate Next.js route types without prerendering
+        run: node node_modules/next/dist/bin/next typegen
+      - name: Check frontend types
+        run: node node_modules/typescript/bin/tsc --noEmit

@@ -85,6 +85,16 @@
     },
     "completedAt": {
       "type": "datetime"
+    },
+    "idempotencyKey": {
+      "type": "string",
+      "unique": true,
+      "column": { "unique": true }
+    },
+    "subscription": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::membership-subscription.membership-subscription"
     }
   }
 }

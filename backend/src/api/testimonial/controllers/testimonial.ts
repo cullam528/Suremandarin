@@ -6,7 +6,15 @@ export default factories.createCoreController('api::testimonial.testimonial', ({
     if (!user) return ctx.unauthorized('Login required');
 
     const membershipLevel = String(user.membershipLevel ?? '').toLowerCase();
-    if (membershipLevel !== 'vip' && membershipLevel !== 'svip') {
+    const now = Date.now();
+    const started = user.membershipStartedAt == null
+      ? -Infinity : new Date(user.membershipStartedAt).getTime();
+    const expires = user.membershipExpiresAt == null
+      ? Infinity : new Date(user.membershipExpiresAt).getTime();
+    // Match article access: a retained VIP label is not an active entitlement.
+    if (user.blocked || !['active', 'trial'].includes(user.membershipStatus ?? '')
+      || !(started <= now && expires > now)
+      || (membershipLevel !== 'vip' && membershipLevel !== 'svip')) {
       return ctx.forbidden('VIP or SVIP membership is required to submit a testimonial');
     }
 

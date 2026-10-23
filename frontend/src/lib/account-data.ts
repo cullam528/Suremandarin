@@ -13,7 +13,7 @@ export type AccountOverview = {
     orderNumber: string;
     productType: string;
     productName: string;
-    paidAmount?: number;
+    paidAmount?: number | null;
     currency: string;
     orderStatus: string;
     paymentStatus: string;
