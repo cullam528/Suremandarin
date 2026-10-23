@@ -4,6 +4,7 @@
   "private": true,
   "description": "A Strapi application",
   "scripts": {
+    "test:auth-gateway": "node --test tests/auth-gateway.test.cjs",
     "build": "strapi build",
     "console": "strapi console",
     "deploy": "strapi deploy",
@@ -12,7 +13,8 @@
     "start": "strapi start",
     "strapi": "strapi",
     "upgrade": "npx @strapi/upgrade latest",
-    "upgrade:dry": "npx @strapi/upgrade latest --dry"
+    "upgrade:dry": "npx @strapi/upgrade latest --dry",
+    "test": "node --test tests/*.test.cjs src/api/article/controllers/article.test.cjs"
   },
   "dependencies": {
     "@blocknote/ariakit": "0.52.1",

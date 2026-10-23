@@ -98,7 +98,7 @@ export function PasswordRecoveryForm({
               <>
                 <label className="auth-field"><Mail /><input required name="email" type="email" autoComplete="email" aria-label={zh ? "注册邮箱" : "Account email"} placeholder={zh ? "注册邮箱" : "Account email"} /></label>
                 <input name="company" type="text" tabIndex={-1} autoComplete="off" aria-hidden="true" className="pointer-events-none absolute h-px w-px opacity-0" />
-                <PuzzleCaptcha key={`forgot-${captchaVersion}`} locale={locale} onChange={setCaptchaProof} />
+                <PuzzleCaptcha key={`forgot-${captchaVersion}`} action="forgot-password" locale={locale} onChange={setCaptchaProof} />
               </>
             ) : (
               <>

@@ -1,3 +1,7 @@
+## Account security configuration
+
+Before a production build, configure every required value in `.env.example`. There are no fallback CAPTCHA keys or in-memory rate limits. See [the security hardening and rollout report](../docs/auth-security-hardening-2026-10-23.md) for configuration, isolated tests and coordinated Strapi deployment.
+
 This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
 
 ## Getting Started

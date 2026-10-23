@@ -1,24 +1,13 @@
 import { NextResponse } from "next/server";
 import { setAuthCookie, STRAPI_URL } from "@/lib/auth";
-import { allowRequest, verifyPuzzleProof } from "@/lib/puzzle-captcha";
+import { enforceIpLimit, enforceAccountLimit, verifyCaptcha, authGatewayHeaders, securityErrorResponse, readAuthBody, validText } from "@/lib/auth-security";
 
 export async function POST(request: Request) {
   try {
-    if (!allowRequest(request, "register", 6, 15 * 60_000)) {
-      return NextResponse.json(
-        { error: "Too many registration attempts. Please try again later." },
-        { status: 429 },
-      );
-    }
+    await enforceIpLimit(request, "register");
     const { fullName, email, password, marketingConsent, privacyConsent, sourceChannel, captcha } =
-      await request.json();
-    if (!verifyPuzzleProof(captcha)) {
-      return NextResponse.json(
-        { error: "Please complete the security verification.", code: "CAPTCHA_INVALID" },
-        { status: 400 },
-      );
-    }
-    if (!fullName || !email || !password || privacyConsent !== true)
+      await readAuthBody(request);
+    if (!validText(fullName, 200) || !validText(email) || !validText(password, 1024) || privacyConsent !== true)
       return NextResponse.json(
         { error: "Please complete all required fields." },
         { status: 400 },
@@ -28,13 +17,17 @@ export async function POST(request: Request) {
         { error: "Password must contain at least 8 characters." },
         { status: 400 },
       );
+    if (!await verifyCaptcha(captcha, "register")) return NextResponse.json(
+      { error: "Please complete the security verification.", code: "CAPTCHA_INVALID" }, { status: 400 },
+    );
+    await enforceAccountLimit("register", email);
     const allowedSources = new Set(["website", "whatsapp", "facebook", "email", "miniprogram", "ios", "android", "other"]);
     const registrationSource = allowedSources.has(String(sourceChannel))
       ? String(sourceChannel)
       : "website";
     const response = await fetch(`${STRAPI_URL}/api/auth/local/register`, {
       method: "POST",
-      headers: {
+      headers: { ...authGatewayHeaders(request),
         "Content-Type": "application/json",
         Accept: "application/json",
       },
@@ -52,6 +45,8 @@ export async function POST(request: Request) {
         privacyConsentAt: new Date().toISOString(),
       }),
       cache: "no-store",
+      redirect: "error",
+      signal: AbortSignal.timeout(30_000),
     });
     const result = await response.json();
     if (!response.ok)
@@ -59,9 +54,11 @@ export async function POST(request: Request) {
         { error: result?.error?.message ?? "Registration was not completed." },
         { status: response.status },
       );
-    await setAuthCookie(result.jwt);
+    if (typeof result.jwt === "string" && result.jwt) await setAuthCookie(result.jwt);
     return NextResponse.json({ user: result.user });
-  } catch {
+  } catch (error) {
+    const securityResponse = securityErrorResponse(error);
+    if (securityResponse) return securityResponse;
     return NextResponse.json(
       { error: "Unable to register. Please try again." },
       { status: 500 },

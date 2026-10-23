@@ -19,6 +19,8 @@ export async function sendAuthRequest(path: string, payload: unknown, locale: Lo
         "Invalid identifier or password": "邮箱或密码不正确，请检查后重试。",
         "Incorrect email or password.": "邮箱或密码不正确，请检查后重试。",
         "Please complete the security verification.": "请重新完成安全验证后提交。",
+        "Security verification is temporarily unavailable. Please try again later.": "安全验证暂时不可用，请稍后重试。已填写的信息会保留。",
+        "Too many attempts. Please try again later.": "操作过于频繁，请稍后重试。已填写的信息会保留。",
         "Email or Username are already taken": "该邮箱已注册，请直接登录或找回密码。",
       };
       throw new Error(zh && messages[message] ? messages[message] : message || (zh

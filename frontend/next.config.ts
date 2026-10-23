@@ -1,4 +1,9 @@
 import type { NextConfig } from "next";
+import { getAuthSecurityConfig } from "./src/lib/auth-security-config";
+
+// Reject unsafe/missing configuration before producing a production build.
+// The same validation runs at every protected request, including after rotation.
+if (process.env.NODE_ENV === "production") getAuthSecurityConfig();
 
 const strapiUrl = process.env.STRAPI_URL ?? process.env.NEXT_PUBLIC_STRAPI_URL ?? "http://127.0.0.1:1337";
 // Vercel supplies VERCEL_ENV at build time. Self-hosted production keeps the

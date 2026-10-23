@@ -271,6 +271,7 @@ export function AuthForm({
             />
             <PuzzleCaptcha
               key={`${mode}-${captchaVersion}`}
+              action={mode}
               locale={locale}
               onChange={setCaptchaProof}
             />
