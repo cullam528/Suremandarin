@@ -1,30 +1,25 @@
 import { NextResponse } from "next/server";
 import { STRAPI_URL } from "@/lib/auth";
-import { allowRequest, verifyPuzzleProof } from "@/lib/puzzle-captcha";
+import { enforceIpLimit, enforceAccountLimit, verifyCaptcha, authGatewayHeaders, securityErrorResponse, readAuthBody, validText } from "@/lib/auth-security";
 
 export async function POST(request: Request) {
   try {
-    if (!allowRequest(request, "forgot-password", 5, 15 * 60_000)) {
-      return NextResponse.json(
-        { error: "Too many password reset requests. Please try again later." },
-        { status: 429 },
-      );
-    }
-    const { email, captcha } = await request.json();
-    if (!verifyPuzzleProof(captcha)) {
-      return NextResponse.json(
-        { error: "Please complete the security verification.", code: "CAPTCHA_INVALID" },
-        { status: 400 },
-      );
-    }
-    if (!email) {
+    await enforceIpLimit(request, "forgot-password");
+    const { email, captcha } = await readAuthBody(request);
+    if (!validText(email)) {
       return NextResponse.json({ error: "Please enter your email address." }, { status: 400 });
     }
+    if (!await verifyCaptcha(captcha, "forgot-password")) return NextResponse.json(
+      { error: "Please complete the security verification.", code: "CAPTCHA_INVALID" }, { status: 400 },
+    );
+    await enforceAccountLimit("forgot-password", email);
     const response = await fetch(`${STRAPI_URL}/api/auth/forgot-password`, {
       method: "POST",
-      headers: { "Content-Type": "application/json", Accept: "application/json" },
+      headers: { ...authGatewayHeaders(request), "Content-Type": "application/json", Accept: "application/json" },
       body: JSON.stringify({ email: String(email).trim().toLowerCase() }),
       cache: "no-store",
+      redirect: "error",
+      signal: AbortSignal.timeout(30_000),
     });
     if (!response.ok) {
       return NextResponse.json(
@@ -33,7 +28,9 @@ export async function POST(request: Request) {
       );
     }
     return NextResponse.json({ ok: true });
-  } catch {
+  } catch (error) {
+    const securityResponse = securityErrorResponse(error);
+    if (securityResponse) return securityResponse;
     return NextResponse.json(
       { error: "Password reset email is temporarily unavailable." },
       { status: 503 },

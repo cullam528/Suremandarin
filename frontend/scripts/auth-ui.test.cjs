@@ -1,4 +1,4 @@
-/* eslint-disable @typescript-eslint/no-require-imports -- Synthetic component/DOM tests: no live CAPTCHA, network or account is accessed. */
+/* eslint-disable @typescript-eslint/no-require-imports -- Isolated component/DOM tests: no live CAPTCHA, network or account is accessed. */
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
@@ -6,103 +6,139 @@ const vm = require('node:vm');
 const { test } = require('node:test');
 const ts = require('typescript');
 
-const componentPath = path.join(__dirname, '../src/components/auth/PuzzleCaptcha.tsx');
-const compiled = ts.transpileModule(fs.readFileSync(componentPath, 'utf8'), {
-  compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2020, jsx: ts.JsxEmit.ReactJSX, esModuleInterop: true },
-}).outputText;
-const challenge = (overrides = {}) => ({ token: 'synthetic-token', target: 60,
-  image: '/images/captcha/synthetic-test.webp', expiresIn: 300, ...overrides });
-const Image = Symbol('mock-next-image');
+const Captcha = Symbol('captcha-form-boundary');
+const Image = Symbol('next-image');
+const sameDeps = (a, b) => a && b && a.length === b.length && a.every((value, index) => Object.is(value, b[index]));
+const plain = (value) => JSON.parse(JSON.stringify(value));
 
-function mountCaptcha({ width = 352, thumb = 52 } = {}) {
-  const slots = [], requests = [], proofs = [], writesAfterUnmount = [], observers = [];
-  const timers = new Map(), frames = new Map(), captures = new Set();
-  let cursor = 0, effects = [], nextTimer = 1, nextFrame = 1, now = 100_000;
-  let mounted = true, dirty = false, tree, renders = 0;
-  const onChange = (proof) => proofs.push(proof);
-  const sameDeps = (a, b) => a && b && a.length === b.length && a.every((value, index) => Object.is(value, b[index]));
-  const element = (extra = {}) => ({ attributes: {},
-    style: { values: {}, setProperty(name, value) { this.values[name] = value; } },
-    setAttribute(name, value) { this.attributes[name] = String(value); }, ...extra });
-  const dom = {
-    panel: element(), track: element({ clientWidth: width }),
-    slider: element({ offsetWidth: thumb, focus() {},
-      setPointerCapture(id) { captures.add(id); }, hasPointerCapture(id) { return captures.has(id); },
-      releasePointerCapture(id) { captures.delete(id); },
-    }),
+function createEnvironment(component = 'PuzzleCaptcha', { sitekey = 'isolated-site-key', width = 350, search = '' } = {}) {
+  const file = path.join(__dirname, '../src/components/auth', component + '.tsx');
+  const compiled = ts.transpileModule(fs.readFileSync(file, 'utf8'), {
+    compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2020, jsx: ts.JsxEmit.ReactJSX, esModuleInterop: true },
+  }).outputText;
+  const timers = new Map(), mounts = [], scripts = [], widgets = [], removed = [], requests = [], responses = [], navigation = [];
+  let nextTimer = 1, now = 100_000, hooks, readyImmediately = true, renderFailure = false;
+  const readyCallbacks = [];
+  const schedule = (callback, delay = 0) => {
+    const id = nextTimer++; timers.set(id, { callback, due: now + Math.max(0, delay) }); return id;
+  };
+  const window = { location: { search }, setTimeout: schedule, clearTimeout: (id) => timers.delete(id) };
+  const api = {
+    ready(callback) { if (readyImmediately) callback(); else readyCallbacks.push(callback); },
+    render(container, options) {
+      if (renderFailure) throw new Error('Isolated render failure');
+      const id = 'isolated-widget-' + widgets.length;
+      widgets.push({ id, container, options });
+      return id;
+    },
+    remove(id) { removed.push(id); },
   };
   const react = {
-    useId() { return 'synthetic-captcha'; },
-    useRef(initial) { const i = cursor++; if (!slots[i]) slots[i] = { current: initial }; return slots[i]; },
+    useId() { return 'isolated-captcha'; },
+    useRef(initial) {
+      const h = hooks, i = h.cursor++;
+      if (!h.slots[i]) h.slots[i] = { current: initial };
+      return h.slots[i];
+    },
     useState(initial) {
-      const i = cursor++;
-      if (!slots[i]) slots[i] = { value: typeof initial === 'function' ? initial() : initial,
+      const h = hooks, i = h.cursor++;
+      if (!h.slots[i]) h.slots[i] = {
+        value: typeof initial === 'function' ? initial() : initial,
         set(update) {
-          if (!mounted) writesAfterUnmount.push(i);
-          const next = typeof update === 'function' ? update(slots[i].value) : update;
-          if (!Object.is(next, slots[i].value)) { slots[i].value = next; dirty = true; }
+          if (!h.mounted) h.writesAfterUnmount.push(i);
+          const next = typeof update === 'function' ? update(h.slots[i].value) : update;
+          if (!Object.is(next, h.slots[i].value)) { h.slots[i].value = next; h.dirty = true; }
         },
       };
-      return [slots[i].value, slots[i].set];
-    },
-    useCallback(callback, dependencies) {
-      const i = cursor++;
-      if (!sameDeps(slots[i]?.dependencies, dependencies)) slots[i] = { dependencies, callback };
-      return slots[i].callback;
+      return [h.slots[i].value, h.slots[i].set];
     },
     useEffect(effect, dependencies) {
-      const i = cursor++;
-      if (!sameDeps(slots[i]?.dependencies, dependencies)) effects.push(() => {
-        slots[i]?.cleanup?.(); slots[i] = { dependencies: dependencies?.slice(), cleanup: effect() };
+      const h = hooks, i = h.cursor++;
+      if (!sameDeps(h.slots[i]?.dependencies, dependencies)) h.effects.push(() => {
+        h.slots[i]?.cleanup?.();
+        h.slots[i] = { dependencies: dependencies?.slice(), cleanup: effect() };
       });
     },
   };
-  const jsx = (type, props) => ({ type, props: props ?? {} });
+  const jsx = (type, props, key) => ({ type, props: props ?? {}, key });
   const exports = {};
   vm.runInNewContext(compiled, {
-    exports, AbortController, Date: { now: () => now },
-    ResizeObserver: class {
-      constructor(callback) { this.callback = callback; this.disconnected = false; observers.push(this); }
-      observe(target) { this.target = target; }
-      disconnect() { this.disconnected = true; }
+    exports, window, process: { env: { NEXT_PUBLIC_TURNSTILE_SITE_KEY: sitekey } }, URLSearchParams, Error,
+    setTimeout: schedule, clearTimeout: window.clearTimeout,
+    FormData: class { constructor(data) { this.data = data; } get(key) { return this.data[key] ?? null; } },
+    document: {
+      createElement(tag) {
+        assert.equal(tag, 'script');
+        const listeners = new Map();
+        return {
+          listeners, removed: false,
+          addEventListener(type, callback) { listeners.set(type, callback); },
+          removeEventListener(type, callback) { if (listeners.get(type) === callback) listeners.delete(type); },
+          remove() { this.removed = true; },
+          dispatch(type) { listeners.get(type)?.(); },
+        };
+      },
+      head: { appendChild(script) { scripts.push(script); } },
     },
-    requestAnimationFrame(callback) { const id = nextFrame++; frames.set(id, callback); return id; },
-    cancelAnimationFrame(id) { frames.delete(id); },
-    setTimeout(callback, delay) { const id = nextTimer++; timers.set(id, { callback, due: now + Math.max(0, delay) }); return id; },
-    clearTimeout(id) { timers.delete(id); },
-    fetch(url, options) { assert.equal(url, '/api/security/puzzle'); return new Promise((resolve, reject) => requests.push({ options, resolve, reject })); },
     require(name) {
       if (name === 'react') return react;
-      if (name === 'react/jsx-runtime') return { jsx, jsxs: jsx, Fragment: Symbol.for('synthetic-fragment') };
-      if (name === 'next/image') return { __esModule: true, default: Image };
-      if (name === 'lucide-react') return Object.fromEntries(['ArrowRight', 'Check', 'LoaderCircle', 'RefreshCw', 'ShieldCheck'].map((icon) => [icon, icon]));
+      if (name === 'react/jsx-runtime') return { jsx, jsxs: jsx, Fragment: Symbol.for('fragment') };
+      if (name === 'next/image') return { __esModule: true, default: Image, getImageProps: (props) => ({ props }) };
+      if (name === 'next/link') return { __esModule: true, default: Symbol.for('link') };
+      if (name === 'next/navigation') return { useRouter: () => ({ push: (url) => navigation.push(url), refresh: () => navigation.push('refresh') }) };
+      if (name === './PuzzleCaptcha') return { PuzzleCaptcha: Captcha };
+      if (name === '@/lib/auth-request') return {
+        async sendAuthRequest(url, payload, locale) {
+          requests.push({ url, payload: plain(payload), locale });
+          const result = responses.shift();
+          if (result instanceof Error) throw result;
+          return result ?? {};
+        },
+      };
+      if (name === 'lucide-react') return new Proxy({}, { get: (_, key) => String(key) });
       if (name === './PuzzleCaptcha.module.css') return { __esModule: true, default: new Proxy({}, { get: (_, key) => String(key) }) };
       throw new Error('Unexpected dependency: ' + name);
     },
-  }, { filename: componentPath });
+  }, { filename: file });
+
   function walk(node, callback) {
     if (!node || typeof node !== 'object') return;
     if (Array.isArray(node)) { node.forEach((child) => walk(child, callback)); return; }
     callback(node); walk(node.props?.children, callback);
   }
-  function find(predicate) { let match; walk(tree, (node) => { if (!match && predicate(node)) match = node; }); return match?.props; }
-  function render() {
-    assert(mounted); renders += 1; cursor = 0; effects = []; dirty = false;
-    tree = exports.PuzzleCaptcha({ locale: 'en', onChange });
-    // React attaches persistent DOM refs before running effects.
-    walk(tree, ({ props }) => {
-      if (!props.ref) return;
-      const name = ['panel', 'track', 'slider'].find((value) => props.className?.split(' ').includes(value));
-      assert(name, 'Unexpected DOM ref; extend this harness explicitly');
-      props.ref.current = dom[name];
-      for (const [key, value] of Object.entries(props)) if (key.startsWith('aria-')) dom[name].setAttribute(key, value);
-    });
-    effects.forEach((effect) => effect());
+  function mount(props = {}) {
+    const proofs = [];
+    const h = {
+      slots: [], cursor: 0, effects: [], mounted: true, dirty: false, writesAfterUnmount: [], tree: null,
+      props: { locale: 'en', action: 'login', onChange: (proof) => proofs.push(proof), ...props },
+      container: { clientWidth: width },
+      render() {
+        assert(h.mounted); hooks = h; h.cursor = 0; h.effects = []; h.dirty = false;
+        h.tree = exports[component](h.props);
+        walk(h.tree, ({ props }) => { if (props.ref) props.ref.current = h.container; });
+        h.effects.forEach((effect) => effect());
+      },
+      find(predicate) {
+        let match; walk(h.tree, (node) => { if (!match && predicate(node)) match = node; }); return match;
+      },
+      get status() { return h.find((node) => node.props.role === 'status')?.props.children; },
+      get refreshButton() { return h.find((node) => node.props.className === 'refresh')?.props; },
+      get captcha() { return h.find((node) => node.type === Captcha); },
+      get form() { return h.find((node) => node.type === 'form')?.props; },
+      get submitButton() { return h.find((node) => node.type === 'button' && node.props.type !== 'button')?.props; },
+      get alert() { return h.find((node) => node.props.role === 'alert')?.props.children; },
+      get text() { const strings = []; walk(h.tree, (node) => {
+        if (typeof node.props?.children === 'string') strings.push(node.props.children);
+      }); return strings.join(' '); },
+      proofs,
+      unmount() { h.mounted = false; h.slots.forEach((slot) => slot?.cleanup?.()); },
+    };
+    mounts.push(h); h.render(); return h;
   }
-  async function flush() { for (let i = 0; i < 12; i++) { await Promise.resolve(); if (mounted && dirty) render(); } }
-  async function act(callback) { callback(); await flush(); }
-  async function advance(milliseconds) {
-    const end = now + milliseconds;
+  async function flush() { for (let i = 0; i < 24; i++) { await Promise.resolve(); for (const h of mounts) if (h.mounted && h.dirty) h.render(); } }
+  async function act(callback) { await callback(); await flush(); }
+  async function advance(ms) {
+    const end = now + ms;
     for (;;) {
       const next = [...timers].filter(([, timer]) => timer.due <= end).sort((a, b) => a[1].due - b[1].due)[0];
       if (!next) break;
@@ -110,194 +146,207 @@ function mountCaptcha({ width = 352, thumb = 52 } = {}) {
     }
     now = end; await flush();
   }
-  render();
   return {
-    get slider() { return find((node) => node.props.role === 'slider'); },
-    get refreshButton() { return find((node) => node.props.className === 'refresh'); },
-    get image() { return find((node) => node.type === Image); },
-    get status() { return find((node) => node.props.id === 'synthetic-captcha-status').children; },
-    get position() { return Number(dom.slider.attributes['aria-valuenow']); },
-    get shift() { return parseFloat(dom.panel.style.values['--shift']); },
-    get renders() { return renders; },
-    requests, proofs, timers, frames, captures, observers, dom, writesAfterUnmount, act, advance, flush,
-    async resolve(index, data = challenge({ token: `synthetic-token-${index}` }), ok = true) { requests[index].resolve({ ok, json: async () => data }); await flush(); },
-    async reject(index) { requests[index].reject(new Error('Synthetic network failure')); await flush(); },
-    async load() { await act(() => this.image.onLoad()); },
-    async imageError() { await act(() => this.image.onError()); },
-    async ready(data) { await this.resolve(0, data); await this.load(); },
-    async pointer(type, x = 100, overrides = {}) {
-      const event = { pointerId: 7, isPrimary: true, button: 0, clientX: x, clientY: 0, currentTarget: dom.slider,
-        preventDefault() {}, nativeEvent: { getCoalescedEvents: () => [] }, ...overrides };
-      await act(() => this.slider[`onPointer${type}`](event));
-    },
-    async lost(pointerId = 7) { captures.delete(pointerId); await act(() => this.slider.onLostPointerCapture({ pointerId })); },
-    async key(key) { await act(() => this.slider.onKeyDown({ key, preventDefault() {} })); },
-    async draw() { const callbacks = [...frames.values()]; frames.clear(); callbacks.forEach((callback) => callback(now)); await flush(); },
-    async resize(nextWidth) { dom.track.clientWidth = nextWidth; observers.filter((o) => !o.disconnected).forEach((o) => o.callback()); await flush(); },
-    unmount() { mounted = false; slots.forEach((slot) => slot?.cleanup?.()); },
+    mount, flush, act, advance, scripts, widgets, removed, requests, responses, navigation, timers, readyCallbacks, api, window,
+    deferReady() { readyImmediately = false; },
+    failRender() { renderFailure = true; },
+    async loadScript(index = scripts.length - 1) { window.turnstile = api; await act(() => scripts[index].dispatch('load')); },
+    async solve(token = 'isolated-provider-token', index = widgets.length - 1) { await act(() => widgets[index].options.callback(token)); },
+    async submit(ui, fields) { await act(() => ui.form.onSubmit({ preventDefault() {}, currentTarget: fields })); },
   };
 }
 
-async function correctDrag(ui) {
-  await ui.pointer('Down');
-  for (const x of [160, 220, 280]) await ui.pointer('Move', x);
-  await ui.pointer('Up', 280);
+test('loading never produces proof; only the official script renders a locale/action-bound widget', async () => {
+  const env = createEnvironment(); const ui = env.mount();
+  assert.equal(ui.refreshButton.disabled, true); assert.match(ui.status, /Loading/);
+  assert.deepEqual(ui.proofs, [null]); await env.flush();
+  assert.equal(env.scripts.length, 1);
+  assert.equal(env.scripts[0].src, 'https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit');
+  assert.equal(env.scripts[0].async, true); assert.equal(env.scripts[0].defer, true);
+  await env.loadScript();
+  assert.equal(ui.refreshButton.disabled, false); assert.match(ui.status, /Complete/);
+  const options = env.widgets[0].options;
+  assert.equal(options.action, 'login'); assert.equal(options.sitekey, 'isolated-site-key');
+  assert.equal(options.language, 'en'); assert.equal(options['response-field'], false);
+  await env.solve();
+  assert.deepEqual(plain(ui.proofs.at(-1)), { token: 'isolated-provider-token' });
+  assert.match(ui.status, /Verified/); ui.unmount();
+});
+
+test('missing configuration fails closed in every environment without a local bypass', async () => {
+  const env = createEnvironment('PuzzleCaptcha', { sitekey: '  ' }); const ui = env.mount();
+  await env.flush(); assert.match(ui.status, /could not load/);
+  assert.equal(env.scripts.length, 0); assert.equal(ui.refreshButton.disabled, false);
+  await env.act(() => ui.refreshButton.onClick());
+  assert.equal(ui.proofs.filter(Boolean).length, 0); assert.equal(env.widgets.length, 0); ui.unmount();
+});
+
+test('register/recovery actions, Chinese locale and compact mobile size reach the provider', async () => {
+  for (const action of ['register', 'forgot-password']) {
+    const env = createEnvironment('PuzzleCaptcha', { width: 240 }); const ui = env.mount({ action, locale: 'zh' });
+    await env.flush(); await env.loadScript();
+    assert.equal(env.widgets[0].options.action, action);
+    assert.equal(env.widgets[0].options.language, 'zh-CN'); assert.equal(env.widgets[0].options.size, 'compact');
+    assert.equal(ui.refreshButton['aria-label'], '重新加载验证'); ui.unmount();
+  }
+});
+
+test('expired, timed out, failed and unsupported widgets clear proof and cannot republish stale success', async () => {
+  for (const callback of ['expired-callback', 'timeout-callback', 'error-callback', 'unsupported-callback']) {
+    const env = createEnvironment(); const ui = env.mount(); await env.flush(); await env.loadScript(); await env.solve();
+    await env.act(() => env.widgets[0].options[callback]());
+    assert.equal(ui.proofs.at(-1), null); assert.equal(ui.refreshButton.disabled, false);
+    const count = ui.proofs.length; await env.solve('stale-token');
+    assert.equal(ui.proofs.length, count); assert.doesNotMatch(ui.status, /Verified/);
+    ui.unmount();
+  }
+});
+
+test('refresh clears proof immediately and old callbacks cannot change the replacement widget', async () => {
+  const env = createEnvironment(); const ui = env.mount(); await env.flush(); await env.loadScript(); await env.solve();
+  const old = env.widgets[0].options;
+  await env.act(() => { ui.refreshButton.onClick(); old.callback('same-tick-stale-token'); });
+  assert.equal(ui.proofs.at(-1), null); assert.equal(env.widgets.length, 2); assert.equal(env.scripts.length, 1);
+  assert.deepEqual(env.removed, ['isolated-widget-0']);
+  await env.act(() => { old.callback('stale-token'); old['error-callback'](); old['expired-callback'](); });
+  assert.match(ui.status, /Complete/); await env.solve('fresh-token');
+  assert.equal(ui.proofs.at(-1).token, 'fresh-token'); ui.unmount();
+});
+
+test('blocked script errors are visible and retry loads a fresh script', async () => {
+  const env = createEnvironment(); const ui = env.mount(); await env.flush();
+  await env.act(() => env.scripts[0].dispatch('error'));
+  assert.equal(env.scripts[0].removed, true); assert.equal(env.scripts[0].listeners.size, 0);
+  assert.match(ui.status, /blocking settings/); assert.equal(ui.proofs.at(-1), null);
+  await env.act(() => ui.refreshButton.onClick()); assert.equal(env.scripts.length, 2);
+  await env.loadScript(); await env.solve(); assert.match(ui.status, /Verified/); ui.unmount();
+});
+
+test('silent script blocking times out and detached late events cannot verify', async () => {
+  const env = createEnvironment(); const ui = env.mount(); await env.flush();
+  const lateLoad = env.scripts[0].listeners.get('load');
+  await env.advance(15_000); assert.match(ui.status, /could not load/); assert.equal(ui.refreshButton.disabled, false);
+  env.window.turnstile = env.api; await env.act(lateLoad); assert.equal(env.widgets.length, 0);
+  await env.act(() => ui.refreshButton.onClick()); await env.solve();
+  assert.match(ui.status, /Verified/); ui.unmount();
+});
+
+test('provider ready timeout and render failure both fail closed', async () => {
+  const ready = createEnvironment(); ready.deferReady(); const waiting = ready.mount();
+  await ready.flush(); await ready.loadScript(); await ready.advance(15_000);
+  assert.match(waiting.status, /could not load/);
+  await ready.act(() => ready.readyCallbacks.forEach((callback) => callback()));
+  assert.equal(ready.widgets.length, 0); waiting.unmount();
+  const render = createEnvironment(); render.failRender(); const failed = render.mount();
+  await render.flush(); await render.loadScript();
+  assert.match(failed.status, /could not load/); assert.equal(failed.proofs.filter(Boolean).length, 0); failed.unmount();
+});
+
+test('empty or oversized provider callbacks never become a proof', async () => {
+  for (const token of ['', 'x'.repeat(2049), undefined]) {
+    const env = createEnvironment(); const ui = env.mount(); await env.flush(); await env.loadScript();
+    await env.act(() => env.widgets[0].options.callback(token));
+    assert.equal(ui.proofs.filter(Boolean).length, 0); assert.match(ui.status, /failed/); ui.unmount();
+  }
+});
+
+test('a local expiry guard clears proof when the provider expiry callback never arrives', async () => {
+  const env = createEnvironment(); const ui = env.mount(); await env.flush(); await env.loadScript(); await env.solve();
+  await env.advance(294_999); assert(ui.proofs.at(-1));
+  await env.advance(1); assert.equal(ui.proofs.at(-1), null); assert.match(ui.status, /expired/); ui.unmount();
+});
+
+test('unmount during load prevents widget creation and late errors or success cannot write', async () => {
+  const env = createEnvironment(); const pending = env.mount(); await env.flush(); pending.unmount();
+  const count = pending.proofs.length;
+  await env.loadScript(); assert.equal(env.widgets.length, 0);
+  assert.deepEqual(pending.writesAfterUnmount, []); assert.equal(pending.proofs.length, count);
+  const mounted = env.mount(); await env.flush(); await env.solve();
+  const old = env.widgets[0].options; mounted.unmount(); const completedCount = mounted.proofs.length;
+  await env.act(() => { old.callback('late'); old['expired-callback'](); old['error-callback'](); old['timeout-callback'](); });
+  await env.advance(300_000);
+  assert.deepEqual(mounted.writesAfterUnmount, []); assert.equal(mounted.proofs.length, completedCount);
+  assert.deepEqual(env.removed, ['isolated-widget-0']); assert.equal(env.timers.size, 0);
+});
+
+test('concurrent forms share one script but keep separate widgets and cleanup', async () => {
+  const env = createEnvironment(); const login = env.mount(); const register = env.mount({ action: 'register' });
+  await env.flush(); assert.equal(env.scripts.length, 1); await env.loadScript(); assert.equal(env.widgets.length, 2);
+  await env.solve('login-token', 0); assert.equal(login.proofs.at(-1).token, 'login-token');
+  assert.equal(register.proofs.at(-1), null); login.unmount();
+  await env.solve('register-token', 1); assert.equal(register.proofs.at(-1).token, 'register-token');
+  register.unmount(); assert.equal(env.removed.length, 2);
+});
+
+const accountFields = { fullName: 'Isolated learner', email: 'learner@example.test', password: 'Synthetic-password-123', privacyConsent: 'on', company: '' };
+
+for (const mode of ['login', 'register']) {
+  test(mode + ' form requires proof, forwards token and preserves successful navigation', async () => {
+    const env = createEnvironment('AuthForm', { search: '?ref=isolated-ref&source=isolated-test' }); const ui = env.mount({ mode });
+    assert.equal(ui.captcha.props.action, mode); assert.equal(ui.submitButton.disabled, true);
+    await env.submit(ui, accountFields); assert.equal(env.requests.length, 0);
+    await env.act(() => ui.captcha.props.onChange({ token: 'isolated-token' }));
+    assert.equal(ui.submitButton.disabled, false);
+    env.responses.push({ requiresEmailConfirmation: false }); await env.submit(ui, accountFields);
+    assert.equal(env.requests.length, 1); assert.equal(env.requests[0].url, '/api/auth/' + mode);
+    assert.deepEqual(env.requests[0].payload.captcha, { token: 'isolated-token', trap: '' });
+    assert.deepEqual(env.navigation, ['/en/account/profile', 'refresh']);
+    if (mode === 'register') {
+      assert.equal(env.requests[0].payload.privacyConsent, true);
+      assert.equal(env.requests[0].payload.referralCode, 'isolated-ref');
+    }
+    ui.unmount();
+  });
+
+  test(mode + ' request failure discards the used proof and remounts the widget before retry', async () => {
+    const env = createEnvironment('AuthForm'); const ui = env.mount({ mode });
+    await env.act(() => ui.captcha.props.onChange({ token: 'used-token' })); const key = ui.captcha.key;
+    env.responses.push(new Error('Isolated account failure')); await env.submit(ui, accountFields);
+    assert.equal(ui.alert, 'Isolated account failure'); assert.notEqual(ui.captcha.key, key);
+    assert.equal(ui.submitButton.disabled, true); assert.equal(env.navigation.length, 0);
+    await env.submit(ui, accountFields); assert.equal(env.requests.length, 1);
+    await env.act(() => ui.captcha.props.onChange({ token: 'new-token' })); await env.submit(ui, accountFields);
+    assert.equal(env.requests[1].payload.captcha.token, 'new-token'); ui.unmount();
+  });
 }
 
-test('image success, not JSON success, unlocks the slider with correct source dimensions', async () => {
-  const ui = mountCaptcha(); assert.equal(ui.slider.disabled, true); await ui.resolve(0);
-  assert.equal(ui.slider.disabled, true); assert.equal(ui.refreshButton.disabled, true);
-  assert.equal(ui.image.width, 600); assert.equal(ui.image.height, 240); assert.match(ui.status, /Preparing/);
-  await ui.load(); assert.equal(ui.slider.disabled, false); assert.equal(ui.refreshButton.disabled, false);
-  assert.equal(ui.timers.size, 1, 'Only challenge-expiry timer remains'); ui.unmount();
+for (const locale of ['en', 'zh']) {
+  test(locale + ' registration awaiting email confirmation shows next steps without an authenticated redirect', async () => {
+    const env = createEnvironment('AuthForm'); const ui = env.mount({ mode: 'register', locale });
+    await env.act(() => ui.captcha.props.onChange({ token: 'isolated-token' }));
+    env.responses.push({ requiresEmailConfirmation: true }); await env.submit(ui, accountFields);
+    assert.equal(env.requests.length, 1); assert.deepEqual(env.navigation, []);
+    assert.equal(ui.form, undefined); assert.equal(ui.captcha, undefined); assert.equal(ui.submitButton, undefined);
+    assert(ui.find((node) => node.props.role === 'status'));
+    assert.match(ui.text, locale === 'zh' ? /注册申请已受理/ : /Registration received/);
+    assert.match(ui.text, locale === 'zh' ? /完成邮箱确认后再登录/ : /Confirm your email address before signing in/);
+    assert.doesNotMatch(ui.text, /邮件已发送|email sent/i); ui.unmount();
+  });
+}
+
+test('forgot-password requires action-bound proof and remounts it after an unsuccessful request', async () => {
+  const env = createEnvironment('PasswordRecoveryForm'); const ui = env.mount({ mode: 'forgot', locale: 'zh' });
+  assert.equal(ui.captcha.props.action, 'forgot-password'); assert.equal(ui.submitButton.disabled, true);
+  await env.submit(ui, accountFields); assert.equal(env.requests.length, 0);
+  await env.act(() => ui.captcha.props.onChange({ token: 'used-token' })); const key = ui.captcha.key;
+  env.responses.push(new Error('Isolated recovery failure')); await env.submit(ui, accountFields);
+  assert.notEqual(ui.captcha.key, key); assert.equal(ui.submitButton.disabled, true);
+  await env.act(() => ui.captcha.props.onChange({ token: 'new-token' })); await env.submit(ui, accountFields);
+  assert.equal(env.requests[1].url, '/api/auth/forgot-password');
+  assert.deepEqual(env.requests[1].payload.captcha, { token: 'new-token', trap: '' });
+  assert.equal(env.requests[1].locale, 'zh'); assert.equal(ui.form, undefined);
+  assert.match(ui.text, /如果该邮箱已注册/); ui.unmount();
 });
 
-test('diagonal touch follows horizontal movement without rerendering React every frame', async () => {
-  const ui = mountCaptcha(); await ui.ready(); await ui.pointer('Down', 100, { clientY: 80 });
-  const renders = ui.renders;
-  for (const [x, clientY] of [[160, 95], [220, 140], [280, 190]]) await ui.pointer('Move', x, { clientY });
-  assert.equal(ui.frames.size, 1, 'High-frequency events share one paint');
-  assert.equal(ui.renders, renders, 'Movement must stay in refs/RAF');
-  await ui.draw(); assert.equal(ui.position, 60); assert.equal(ui.shift, 180); assert.equal(ui.renders, renders);
-  await ui.pointer('Up', 280, { clientY: 200 }); await ui.advance(651); assert.equal(ui.proofs.at(-1).position, 60);
-  const css = fs.readFileSync(path.join(__dirname, '../src/components/auth/PuzzleCaptcha.module.css'), 'utf8');
-  assert.match(css.match(/\.slider\s*\{([^}]+)\}/)?.[1] ?? '', /touch-action:\s*none/); ui.unmount();
-});
-
-test('pointerup commits its final coordinate; checking ignores late movement and native lostcapture', async () => {
-  const ui = mountCaptcha(); await ui.ready(); await ui.pointer('Down');
-  await ui.pointer('Move', 160); await ui.pointer('Move', 220); await ui.pointer('Up', 286);
-  assert.equal(ui.position, 62); assert.equal(ui.shift, 186); assert.match(ui.status, /Confirming/);
-  assert.equal(ui.slider.disabled, true); assert.equal(ui.proofs.filter(Boolean).length, 0);
-  await ui.pointer('Move', 400); await ui.pointer('Down', 200); await ui.key('End'); await ui.lost();
-  await ui.advance(650); assert.equal(ui.proofs.filter(Boolean).length, 0); await ui.advance(1);
-  assert.equal(ui.proofs.at(-1).position, 62); assert.equal(ui.proofs.at(-1).moves, 3);
-  assert.equal(ui.proofs.at(-1).elapsedMs, 651); assert.equal(ui.position, 60, 'Successful display snaps to target');
-  assert.equal(ui.captures.size, 0); assert.match(ui.status, /Verified/); ui.unmount();
-});
-
-test('coalesced samples count real moves without double-counting the final coordinate', async () => {
-  const ui = mountCaptcha(); await ui.ready(); await ui.pointer('Down');
-  await ui.pointer('Move', 280, { nativeEvent: { getCoalescedEvents: () => [160, 220, 280].map((clientX) => ({ clientX })) } });
-  await ui.pointer('Up', 280); await ui.advance(651);
-  assert.equal(ui.proofs.at(-1).moves, 3); assert.equal(ui.proofs.at(-1).position, 60); ui.unmount();
-});
-
-test('secondary buttons/pointers cannot start, steal, finish or cancel the primary gesture', async () => {
-  const ui = mountCaptcha(); await ui.ready();
-  await ui.pointer('Down', 100, { isPrimary: false, pointerId: 8 }); await ui.pointer('Down', 100, { button: 2 });
-  assert.equal(ui.captures.size, 0); await ui.pointer('Down'); await ui.pointer('Move', 160);
-  await ui.pointer('Down', 100, { pointerId: 8 }); await ui.pointer('Move', 400, { pointerId: 8 });
-  await ui.pointer('Up', 400, { pointerId: 8 }); await ui.pointer('Cancel', 0, { pointerId: 8 }); await ui.lost(8);
-  await ui.draw(); assert.equal(ui.position, 20); assert.equal(ui.captures.has(7), true);
-  await ui.pointer('Move', 220); await ui.pointer('Up', 280); await ui.advance(651);
-  assert.equal(ui.proofs.at(-1).position, 60); assert.equal(ui.proofs.at(-1).moves, 3); ui.unmount();
-});
-
-test('pointercancel and unexpected lost capture never verify an aligned gesture', async () => {
-  for (const kind of ['cancel', 'lost']) {
-    const ui = mountCaptcha(); await ui.ready(); await ui.pointer('Down');
-    for (const x of [160, 220, 280]) await ui.pointer('Move', x);
-    if (kind === 'cancel') await ui.pointer('Cancel', 280); else await ui.lost();
-    await ui.pointer('Up', 280); await ui.advance(1000); await ui.draw();
-    assert.equal(ui.position, 0); assert.equal(ui.proofs.filter(Boolean).length, 0); assert.equal(ui.proofs.at(-1), null);
-    assert.match(ui.status, /interrupted/); assert.equal(ui.slider.disabled, false); ui.unmount();
-  }
-});
-
-test('too few actual moves fail safely and preserve position for correction', async () => {
-  const ui = mountCaptcha(); await ui.ready(); await ui.pointer('Down'); await ui.pointer('Move', 280);
-  await ui.advance(700); await ui.pointer('Up', 280);
-  assert.equal(ui.position, 60); assert.equal(ui.proofs.at(-1), null); assert.equal(ui.proofs.filter(Boolean).length, 0);
-  assert.match(ui.status, /slowly/); assert.equal(ui.slider.disabled, false); ui.unmount();
-});
-
-test('mismatch retains position and a correction counts only the new gesture', async () => {
-  const ui = mountCaptcha(); await ui.ready(); await ui.pointer('Down');
-  for (const x of [130, 160, 220]) await ui.pointer('Move', x);
-  await ui.advance(700); await ui.pointer('Up', 220); assert.equal(ui.position, 40); assert.match(ui.status, /Almost there/);
-  await ui.pointer('Down'); for (const x of [115, 130, 145, 160]) await ui.pointer('Move', x);
-  await ui.pointer('Up', 160); await ui.advance(651);
-  assert.equal(ui.proofs.at(-1).position, 60); assert.equal(ui.proofs.at(-1).moves, 4); ui.unmount();
-});
-
-test('keyboard arrows retain adjustments and Enter respects three-move/minimum-time rules', async () => {
-  const ui = mountCaptcha(); await ui.ready(challenge({ target: 3 })); await ui.key('Enter'); assert.equal(ui.slider.disabled, false);
-  for (const [key, value] of [['ArrowRight', 1], ['ArrowUp', 2], ['ArrowRight', 3]]) {
-    await ui.key(key); assert.equal(ui.position, value); assert.equal(ui.proofs.filter(Boolean).length, 0);
-  }
-  await ui.key('Enter'); assert.match(ui.status, /Confirming/); await ui.advance(651);
-  assert.equal(ui.proofs.at(-1).position, 3); assert.equal(ui.proofs.at(-1).moves, 3); ui.unmount();
-});
-
-test('Home/End/PageUp/PageDown and arrows respect bounds; Space can confirm', async () => {
-  const ui = mountCaptcha(); await ui.ready();
-  for (const [key, expected] of [['End', 100], ['ArrowRight', 100], ['Home', 0], ['ArrowLeft', 0], ['PageUp', 10], ['PageDown', 0], ['ArrowUp', 1], ['ArrowDown', 0]]) {
-    await ui.key(key); assert.equal(ui.position, expected);
-  }
-  for (let i = 0; i < 6; i++) await ui.key('PageUp');
-  await ui.advance(700); await ui.key(' '); assert.equal(ui.proofs.at(-1).position, 60); ui.unmount();
-});
-
-test('geometry follows measured rail/handle widths and refuses degenerate travel', async () => {
-  const ui = mountCaptcha(); await ui.ready(); await ui.resize(252); await ui.pointer('Down');
-  for (const x of [140, 180, 220]) await ui.pointer('Move', x);
-  await ui.draw(); assert.equal(ui.position, 60); assert.equal(ui.shift, 120);
-  await ui.pointer('Up', 220); await ui.advance(651); assert.equal(ui.proofs.at(-1).position, 60); ui.unmount();
-  const narrow = mountCaptcha({ width: 52 }); await narrow.ready(); await narrow.pointer('Down');
-  assert.equal(narrow.captures.size, 0); assert.equal(narrow.proofs.filter(Boolean).length, 0); narrow.unmount();
-});
-
-test('image failure keeps dragging locked; successful refresh restores it', async () => {
-  const ui = mountCaptcha(); await ui.resolve(0); await ui.imageError();
-  assert.equal(ui.slider.disabled, true); assert.equal(ui.refreshButton.disabled, false); assert.match(ui.status, /image could not load/);
-  await ui.act(() => ui.refreshButton.onClick()); await ui.resolve(1); await ui.load();
-  assert.equal(ui.slider.disabled, false); assert.doesNotMatch(ui.status, /could not load/); ui.unmount();
-});
-
-test('image timeout permits retry and old image callbacks cannot affect a replacement challenge', async () => {
-  const ui = mountCaptcha(); await ui.resolve(0); const oldImage = ui.image; await ui.advance(15_000);
-  assert.match(ui.status, /image timed out/); assert.equal(ui.slider.disabled, true); assert.equal(ui.refreshButton.disabled, false);
-  await ui.act(() => ui.refreshButton.onClick()); await ui.act(() => oldImage.onLoad()); assert.equal(ui.slider.disabled, true);
-  await ui.resolve(1); await ui.act(() => oldImage.onLoad()); assert.equal(ui.slider.disabled, true);
-  await ui.load(); await ui.act(() => oldImage.onError()); assert.equal(ui.slider.disabled, false);
-  assert.doesNotMatch(ui.status, /could not load|timed out/); ui.unmount();
-});
-
-test('fetch timeout aborts and ignores late results after a successful refresh', async () => {
-  const ui = mountCaptcha(); await ui.advance(15_000); assert.equal(ui.requests[0].options.signal.aborted, true);
-  assert.match(ui.status, /timed out/); await ui.act(() => ui.refreshButton.onClick()); await ui.resolve(1); await ui.load();
-  const src = ui.image.src;
-  await ui.resolve(0, challenge({ token: 'synthetic-old', image: '/images/captcha/old-synthetic.webp' }));
-  assert.equal(ui.image.src, src); assert.equal(ui.slider.disabled, false); ui.unmount();
-});
-
-test('failed fetch is retryable and malformed image URLs never unlock the slider', async () => {
-  const ui = mountCaptcha(); await ui.reject(0); assert.equal(ui.refreshButton.disabled, false); assert.equal(ui.slider.disabled, true);
-  await ui.act(() => ui.refreshButton.onClick()); await ui.resolve(1, challenge({ image: 'https://invalid.example/image.png' }));
-  assert.equal(ui.slider.disabled, true); assert.equal(ui.image, undefined); assert.match(ui.status, /could not load/);
-  await ui.act(() => ui.refreshButton.onClick()); await ui.resolve(2); await ui.load(); assert.equal(ui.slider.disabled, false); ui.unmount();
-});
-
-test('expiry clears verified proof and ignores old image callbacks', async () => {
-  const ui = mountCaptcha(); await ui.ready(); const oldImage = ui.image; await correctDrag(ui); await ui.advance(651);
-  assert(ui.proofs.at(-1)); await ui.advance(295_000 - 651);
-  assert.equal(ui.proofs.at(-1), null); assert.equal(ui.position, 0); assert.equal(ui.slider.disabled, true); assert.match(ui.status, /expired/);
-  await ui.act(() => oldImage.onLoad()); assert.equal(ui.slider.disabled, true); ui.unmount();
-});
-
-test('unmount aborts requests, disconnects observers and rejects late fetch/image writes', async () => {
-  const pending = mountCaptcha(); pending.unmount(); assert.equal(pending.requests[0].options.signal.aborted, true);
-  assert.equal(pending.timers.size, 0); await pending.resolve(0); assert.deepEqual(pending.writesAfterUnmount, []);
-  const image = mountCaptcha(); await image.resolve(0); const callbacks = image.image; image.unmount();
-  await image.act(() => { callbacks.onLoad(); callbacks.onError(); }); assert.deepEqual(image.writesAfterUnmount, []);
-  assert(image.observers.every((o) => o.disconnected)); assert.equal(image.timers.size, 0); assert.equal(image.proofs.filter(Boolean).length, 0);
-});
-
-test('unmount cancels animation frames and checking timers without publishing proof', async () => {
-  const frame = mountCaptcha(); await frame.ready(); await frame.pointer('Down'); await frame.pointer('Move', 160);
-  assert.equal(frame.frames.size, 1); frame.unmount(); assert.equal(frame.frames.size, 0);
-  const checking = mountCaptcha(); await checking.ready(); await correctDrag(checking); assert.match(checking.status, /Confirming/);
-  checking.unmount(); await checking.advance(1000); assert.equal(checking.timers.size, 0); assert.equal(checking.proofs.filter(Boolean).length, 0);
-  assert.deepEqual(checking.writesAfterUnmount, []);
+test('reset-password has no CAPTCHA, validates matching passwords and sends the reset code', async () => {
+  const env = createEnvironment('PasswordRecoveryForm'); const ui = env.mount({ mode: 'reset', resetCode: 'isolated-reset-code' });
+  assert.equal(ui.captcha, undefined); assert.equal(ui.submitButton.disabled, false);
+  await env.submit(ui, { password: 'one', passwordConfirmation: 'two' }); assert.equal(env.requests.length, 0);
+  assert.match(ui.alert, /do not match/);
+  await env.submit(ui, { password: 'Synthetic-password-123', passwordConfirmation: 'Synthetic-password-123' });
+  assert.deepEqual(env.requests[0], {
+    url: '/api/auth/reset-password', locale: 'en',
+    payload: { code: 'isolated-reset-code', password: 'Synthetic-password-123', passwordConfirmation: 'Synthetic-password-123' },
+  });
+  await env.advance(900); assert.deepEqual(env.navigation, ['/en/account/profile', 'refresh']); ui.unmount();
 });

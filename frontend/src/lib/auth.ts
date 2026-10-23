@@ -1,11 +1,9 @@
 import { cookies } from "next/headers";
 
 export const AUTH_COOKIE = "suremandarin_session";
-const configuredStrapiUrl = process.env.NEXT_PUBLIC_STRAPI_URL ?? process.env.STRAPI_URL;
+const configuredStrapiUrl = process.env.STRAPI_URL ?? process.env.NEXT_PUBLIC_STRAPI_URL;
 export const STRAPI_URL = (
-  configuredStrapiUrl && !/localhost|127\.0\.0\.1/i.test(configuredStrapiUrl)
-    ? configuredStrapiUrl
-    : "https://api.suremandarin.com"
+  configuredStrapiUrl || "http://127.0.0.1:1337"
 ).replace(/\/$/, "");
 
 export async function setAuthCookie(jwt: string) {

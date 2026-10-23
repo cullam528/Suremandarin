@@ -5,11 +5,9 @@ import { localizeHomepage, type Locale } from "@/lib/i18n";
 import { contentText, type ContentSeo } from "@/lib/content-seo";
 import { editorialGuides } from "@/lib/editorial-guides";
 
-const configuredStrapiUrl = process.env.NEXT_PUBLIC_STRAPI_URL ?? process.env.STRAPI_URL;
+const configuredStrapiUrl = process.env.STRAPI_URL ?? process.env.NEXT_PUBLIC_STRAPI_URL;
 const STRAPI_URL = (
-  configuredStrapiUrl && !/localhost|127\.0\.0\.1/i.test(configuredStrapiUrl)
-    ? configuredStrapiUrl
-    : "https://api.suremandarin.com"
+  configuredStrapiUrl || "http://127.0.0.1:1337"
 ).replace(/\/$/, "");
 const configuredTimeout = Number(process.env.STRAPI_REQUEST_TIMEOUT_MS);
 const STRAPI_REQUEST_TIMEOUT_MS =

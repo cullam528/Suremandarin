@@ -1,4 +1,9 @@
 import type { NextConfig } from "next";
+import { assertAuthSecurityBuildConfig } from "./src/lib/auth-security-config";
+
+// Every optimized build, including Vercel Preview, requires valid security config.
+// Build diagnostics contain variable names only; protected requests still return generic 503s.
+if (process.env.NODE_ENV === "production") assertAuthSecurityBuildConfig();
 
 const strapiUrl = process.env.STRAPI_URL ?? process.env.NEXT_PUBLIC_STRAPI_URL ?? "http://127.0.0.1:1337";
 // Vercel supplies VERCEL_ENV at build time. Self-hosted production keeps the
