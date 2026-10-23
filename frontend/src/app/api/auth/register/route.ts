@@ -54,8 +54,9 @@ export async function POST(request: Request) {
         { error: result?.error?.message ?? "Registration was not completed." },
         { status: response.status },
       );
-    if (typeof result.jwt === "string" && result.jwt) await setAuthCookie(result.jwt);
-    return NextResponse.json({ user: result.user });
+    const hasSession = typeof result.jwt === "string" && result.jwt.length > 0;
+    if (hasSession) await setAuthCookie(result.jwt);
+    return NextResponse.json({ user: result.user, requiresEmailConfirmation: !hasSession });
   } catch (error) {
     const securityResponse = securityErrorResponse(error);
     if (securityResponse) return securityResponse;

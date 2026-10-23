@@ -16,7 +16,7 @@ The [offline baseline](../artifacts/security-baseline/README.md) has six executa
 - Vercel requests use its platform-supplied `x-vercel-forwarded-for`; outside Vercel, only an explicitly configured trusted ingress header is considered. Missing/invalid identities share a conservative bucket. IPv6 addresses are canonicalized and grouped by /64. Redis keys contain HMAC digests, not addresses, emails or reset codes.
 - Added a Strapi middleware gate for native local-account endpoints and their local callback alias. Requests require a separate server-only gateway credential, checked in constant time. Existing Strapi rate limiting remains enabled. After gateway authentication, a validated `x-auth-client-ip` preserves end-user buckets instead of aggregating all users behind Vercel's outbound IP. Raw public forwarded headers are not accepted as authorization.
 - Bounded auth bodies to 16 KiB, added explicit provider/storage/upstream timeouts, prohibited redirect-following on credential-bearing calls, and return `429` with `Retry-After` or `503` without invoking account operations on security-service failures.
-- Kept bilingual retry/expiry/error states, retained form input after failures and refresh the CAPTCHA after consumed-token failures. Register responses requiring email confirmation may legitimately lack a JWT; login/reset malformed success responses cannot create sessions.
+- Kept bilingual retry/expiry/error states, retained form input after failures and refresh the CAPTCHA after consumed-token failures. Register responses requiring email confirmation may legitimately lack a JWT; the form shows bilingual confirmation instructions instead of opening an account page without a session. Login/reset malformed success responses cannot create sessions.
 - Corrected backend URL precedence: server-only `STRAPI_URL` wins, explicitly configured loopback URLs are respected, and missing local configuration no longer silently sends requests to the production API.
 
 ## Required deployment configuration
@@ -57,7 +57,7 @@ Installed frontend and backend dependencies from their existing pnpm lockfiles w
 | --- | --- |
 | Pre-change related frontend tests | 51 passed |
 | Offline baseline vulnerability reproductions | 6 passed |
-| Full frontend suite, including real Redis integration | 200 passed, 0 failed, 0 skipped |
+| Full frontend suite, including real Redis integration | 202 passed, 0 failed, 0 skipped |
 | Full backend suite (root tests and article controller tests) | 43 passed, 0 failed |
 | Frontend and backend TypeScript checks | Passed |
 | Frontend and backend production builds | Passed; frontend used synthetic config and a read-only loopback CMS fixture |

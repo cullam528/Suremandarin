@@ -286,7 +286,8 @@ for (const mode of ['login', 'register']) {
     assert.equal(ui.captcha.props.action, mode); assert.equal(ui.submitButton.disabled, true);
     await env.submit(ui, accountFields); assert.equal(env.requests.length, 0);
     await env.act(() => ui.captcha.props.onChange({ token: 'isolated-token' }));
-    assert.equal(ui.submitButton.disabled, false); await env.submit(ui, accountFields);
+    assert.equal(ui.submitButton.disabled, false);
+    env.responses.push({ requiresEmailConfirmation: false }); await env.submit(ui, accountFields);
     assert.equal(env.requests.length, 1); assert.equal(env.requests[0].url, '/api/auth/' + mode);
     assert.deepEqual(env.requests[0].payload.captcha, { token: 'isolated-token', trap: '' });
     assert.deepEqual(env.navigation, ['/en/account/profile', 'refresh']);
@@ -306,6 +307,20 @@ for (const mode of ['login', 'register']) {
     await env.submit(ui, accountFields); assert.equal(env.requests.length, 1);
     await env.act(() => ui.captcha.props.onChange({ token: 'new-token' })); await env.submit(ui, accountFields);
     assert.equal(env.requests[1].payload.captcha.token, 'new-token'); ui.unmount();
+  });
+}
+
+for (const locale of ['en', 'zh']) {
+  test(locale + ' registration awaiting email confirmation shows next steps without an authenticated redirect', async () => {
+    const env = createEnvironment('AuthForm'); const ui = env.mount({ mode: 'register', locale });
+    await env.act(() => ui.captcha.props.onChange({ token: 'isolated-token' }));
+    env.responses.push({ requiresEmailConfirmation: true }); await env.submit(ui, accountFields);
+    assert.equal(env.requests.length, 1); assert.deepEqual(env.navigation, []);
+    assert.equal(ui.form, undefined); assert.equal(ui.captcha, undefined); assert.equal(ui.submitButton, undefined);
+    assert(ui.find((node) => node.props.role === 'status'));
+    assert.match(ui.text, locale === 'zh' ? /注册申请已受理/ : /Registration received/);
+    assert.match(ui.text, locale === 'zh' ? /完成邮箱确认后再登录/ : /Confirm your email address before signing in/);
+    assert.doesNotMatch(ui.text, /邮件已发送|email sent/i); ui.unmount();
   });
 }
 

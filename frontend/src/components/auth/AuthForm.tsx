@@ -29,6 +29,7 @@ export function AuthForm({
   const [show, setShow] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [emailConfirmationPending, setEmailConfirmationPending] = useState(false);
   const [referralCode, setReferralCode] = useState("");
   const [inviterName, setInviterName] = useState("");
   const [sourceChannel, setSourceChannel] = useState("website");
@@ -78,7 +79,7 @@ export function AuthForm({
   }
   async function submit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
-    if (loading || !captchaProof) return;
+    if (loading || emailConfirmationPending || !captchaProof) return;
     setLoading(true);
     setError("");
     const fd = new FormData(e.currentTarget);
@@ -105,7 +106,12 @@ export function AuthForm({
           captcha: { ...captchaProof, trap: fd.get("company") },
         };
     try {
-      await sendAuthRequest(`/api/auth/${mode}`, payload, locale);
+      const result = await sendAuthRequest(`/api/auth/${mode}`, payload, locale);
+      if (register && result.requiresEmailConfirmation === true) {
+        setCaptchaProof(null);
+        setEmailConfirmationPending(true);
+        return;
+      }
     } catch (error) {
       setError(error instanceof Error ? error.message : (zh ? "请稍后重试。" : "Please try again."));
       setCaptchaProof(null);
@@ -208,7 +214,16 @@ export function AuthForm({
               </div>
             </div>
           )}
-          <form onSubmit={submit} className="mt-8 grid gap-4">
+          {emailConfirmationPending ? (
+            <div role="status" className="mt-8 rounded-2xl border border-emerald-200 bg-emerald-50 p-5 text-emerald-700">
+              <p className="font-extrabold">{zh ? "注册申请已受理" : "Registration received"}</p>
+              <p className="mt-2 text-sm leading-6">
+                {zh
+                  ? "请检查收件箱和垃圾邮件文件夹中的确认邮件，完成邮箱确认后再登录。"
+                  : "Please check your inbox and spam folder for a confirmation email. Confirm your email address before signing in."}
+              </p>
+            </div>
+          ) : <form onSubmit={submit} className="mt-8 grid gap-4">
             {register && (
               <label className="auth-field">
                 <UserRound />
@@ -326,7 +341,8 @@ export function AuthForm({
                     ? "登录"
                     : "Sign in"}
             </button>
-          </form>
+          </form>}
+          {!emailConfirmationPending && <>
           <div className="my-7 flex items-center gap-3 text-xs text-slate-400">
             <span className="h-px flex-1 bg-brand-line" />
             {zh ? "或使用以下账号继续" : "OR CONTINUE WITH"}
@@ -363,6 +379,7 @@ export function AuthForm({
             </Link>
             {zh ? "。" : "."}
           </p>
+          </>}
           <p className="mt-7 text-center text-sm leading-6 text-slate-600">
             {!register && (
               <>
