@@ -10,7 +10,7 @@ export async function POST(request: Request) {
         { status: 429 },
       );
     }
-    const { fullName, email, password, marketingConsent, privacyConsent, sourceChannel, captcha } =
+    const { fullName, email, password, marketingConsent, privacyConsent, sourceChannel, referredByCode, referralCode, captcha } =
       await request.json();
     if (!verifyPuzzleProof(captcha)) {
       return NextResponse.json(
@@ -32,6 +32,11 @@ export async function POST(request: Request) {
     const registrationSource = allowedSources.has(String(sourceChannel))
       ? String(sourceChannel)
       : "website";
+    // Accept the former website field for clients open during deployment. Only
+    // the canonical registration field may reach Strapi; referralCode is owned
+    // by Strapi and identifies the new member's own future invitations.
+    const invitation = referredByCode ?? referralCode;
+    const invitationCode = typeof invitation === "string" ? invitation.trim() : "";
     const response = await fetch(`${STRAPI_URL}/api/auth/local/register`, {
       method: "POST",
       headers: {
@@ -50,6 +55,7 @@ export async function POST(request: Request) {
         marketingConsent: Boolean(marketingConsent),
         privacyPolicyVersion: "2026-08",
         privacyConsentAt: new Date().toISOString(),
+        ...(invitationCode && invitationCode.length <= 80 ? { referredByCode: invitationCode } : {}),
       }),
       cache: "no-store",
     });
@@ -59,7 +65,7 @@ export async function POST(request: Request) {
         { error: result?.error?.message ?? "Registration was not completed." },
         { status: response.status },
       );
-    await setAuthCookie(result.jwt);
+    if (result.jwt) await setAuthCookie(result.jwt);
     return NextResponse.json({ user: result.user });
   } catch {
     return NextResponse.json(

@@ -1,41 +1,16 @@
 import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import { setAuthCookie, STRAPI_URL } from "@/lib/auth";
+import { isOAuthAttempt, oauthContextCookie, readOAuthContext, type OAuthContext } from "@/lib/oauth-context";
 
 const supported = new Set(["google", "linkedin", "twitter"]);
-
-const OAUTH_CONTEXT_COOKIE = "suremandarin_oauth_context";
-
-type OAuthContext = {
-  locale: "en" | "zh";
-  mode: "login" | "register";
-  ref?: string;
-  refName?: string;
-  source?: string;
-};
 
 type AuthResult = {
   jwt?: string;
   error?: { message?: string };
 };
 
-function readOAuthContext(value?: string): OAuthContext {
-  if (!value) return { locale: "en", mode: "login" };
-  try {
-    const parsed = JSON.parse(Buffer.from(value, "base64url").toString("utf8")) as Partial<OAuthContext>;
-    return {
-      locale: parsed.locale === "zh" ? "zh" : "en",
-      mode: parsed.mode === "register" ? "register" : "login",
-      ref: typeof parsed.ref === "string" ? parsed.ref : "",
-      refName: typeof parsed.refName === "string" ? parsed.refName : "",
-      source: typeof parsed.source === "string" ? parsed.source : "website",
-    };
-  } catch {
-    return { locale: "en", mode: "login" };
-  }
-}
-
-function authPageUrl(origin: string, context: OAuthContext, reason: string) {
+function authPageUrl(origin: string, context: Pick<OAuthContext, "locale" | "mode"> & Partial<OAuthContext>, reason: string) {
   const target = new URL(`/${context.locale}/${context.mode}`, origin);
   target.searchParams.set("oauth", reason);
   if (context.mode === "register" && context.ref) target.searchParams.set("ref", context.ref);
@@ -59,11 +34,22 @@ export async function GET(
 ) {
   const { provider } = await params;
   const url = new URL(request.url);
-  const cookieStore = await cookies();
-  const context = readOAuthContext(cookieStore.get(OAUTH_CONTEXT_COOKIE)?.value);
-  cookieStore.delete(OAUTH_CONTEXT_COOKIE);
+  const fallback = { locale: "en", mode: "login" } as const;
   if (!supported.has(provider))
-    return NextResponse.redirect(authPageUrl(url.origin, context, "unsupported"));
+    return NextResponse.redirect(authPageUrl(url.origin, fallback, "unsupported"));
+  const attempt = url.searchParams.get("oauthAttempt");
+  if (!isOAuthAttempt(attempt) || url.searchParams.getAll("oauthAttempt").length !== 1)
+    return NextResponse.redirect(authPageUrl(url.origin, fallback, "failed"));
+  const cookieStore = await cookies();
+  const cookieName = oauthContextCookie(attempt);
+  const context = readOAuthContext(cookieStore.get(cookieName)?.value);
+  if (!context) {
+    cookieStore.delete(cookieName);
+    return NextResponse.redirect(authPageUrl(url.origin, fallback, "failed"));
+  }
+  if (context.provider !== provider)
+    return NextResponse.redirect(authPageUrl(url.origin, fallback, "failed"));
+  cookieStore.delete(cookieName);
   if (url.searchParams.get("error"))
     return NextResponse.redirect(authPageUrl(
       url.origin,
@@ -72,8 +58,25 @@ export async function GET(
     ));
 
   try {
+    // Provider callback URLs are untrusted. Invitation data comes only from
+    // the context saved when registration started and is applied by Strapi
+    // only when the verified provider identity creates a new member.
+    const providerQuery = new URLSearchParams(url.searchParams);
+    providerQuery.delete("oauthAttempt");
+    for (const key of ["ref", "refName", "referralCode", "referredByCode", "referrer", "referrerId", "referredUser", "referredUserId", "referee", "refereeId", "referralSource", "source", "registrationSource", "mode"]) {
+      providerQuery.delete(key);
+    }
+    if (context.mode === "register") {
+      providerQuery.set("mode", "register");
+      const invitationCode = context.ref?.trim() ?? "";
+      if (invitationCode && invitationCode.length <= 80) {
+        providerQuery.set("referredByCode", invitationCode);
+        const allowedSources = new Set(["website", "whatsapp", "facebook", "email", "miniprogram", "ios", "android", "other"]);
+        providerQuery.set("referralSource", allowedSources.has(context.source ?? "") ? context.source! : "website");
+      }
+    }
     const response = await fetch(
-      `${STRAPI_URL}/api/auth/${provider}/callback?${url.searchParams.toString()}`,
+      `${STRAPI_URL}/api/auth/${provider}/callback?${providerQuery.toString()}`,
       { headers: { Accept: "application/json" }, cache: "no-store" },
     );
     const result = await response.json().catch(() => null) as AuthResult | null;

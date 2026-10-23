@@ -11,7 +11,7 @@ import {
   Share2,
   UsersRound,
 } from "lucide-react";
-import { useState } from "react";
+import { useState, useSyncExternalStore } from "react";
 import type { Locale } from "@/lib/i18n";
 import type { AccountOverview } from "@/lib/account-data";
 
@@ -33,6 +33,10 @@ const rewardLabels: Record<string, string> = {
   rejected: "Rejected",
 };
 
+const subscribeToOrigin = () => () => {};
+const browserOrigin = () => window.location.origin;
+const serverOrigin = () => "";
+
 export function ReferralCenter({
   locale,
   referralCode,
@@ -47,7 +51,8 @@ export function ReferralCenter({
   const zh = locale === "zh";
   const [copied, setCopied] = useState(false);
   const [shared, setShared] = useState(false);
-  const canShare = typeof navigator !== "undefined" && Boolean(navigator.share);
+  const origin = useSyncExternalStore(subscribeToOrigin, browserOrigin, serverOrigin);
+  const canShare = Boolean(origin) && Boolean(navigator.share);
   const referralPath = `/${locale}/register?ref=${encodeURIComponent(referralCode)}&refName=${encodeURIComponent(referrerName)}`;
   const stats = overview?.referralStats ?? {
     invitedCount: 0,
@@ -59,7 +64,7 @@ export function ReferralCenter({
   const records = overview?.referrals ?? [];
 
   function referralUrlForSource(source: string) {
-    return `${window.location.origin}${referralPath}&source=${source}`;
+    return `${origin}${referralPath}&source=${source}`;
   }
 
   async function copyLink() {
@@ -91,7 +96,7 @@ export function ReferralCenter({
   const shareText = zh
     ? "我在 SureMandarin 学中文，一起开始吧！"
     : "I am learning Chinese with SureMandarin. Join me!";
-  const shareLinks = [
+  const shareLinks = origin ? [
     {
       label: "WhatsApp",
       icon: MessageCircle,
@@ -107,7 +112,7 @@ export function ReferralCenter({
       icon: Mail,
       href: `mailto:?subject=${encodeURIComponent(zh ? "一起学习中文" : "Learn Chinese with me")}&body=${encodeURIComponent(`${shareText}\n\n${referralUrlForSource("email")}`)}`,
     },
-  ];
+  ] : [];
 
   const statCards = [
     { icon: UsersRound, value: stats.invitedCount, label: zh ? "已邀请人数" : "People invited" },

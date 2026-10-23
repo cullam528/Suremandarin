@@ -111,10 +111,18 @@
     },
     "referralCode": {
       "type": "string",
-      "unique": true
+      "unique": true,
+      "column": { "unique": true }
     },
     "referredByCode": {
-      "type": "string"
+      "type": "string",
+      "private": true
+    },
+    "registrationIdentityKey": {
+      "type": "string",
+      "unique": true,
+      "private": true,
+      "column": { "unique": true }
     },
     "referralRewardBalance": {
       "type": "decimal",

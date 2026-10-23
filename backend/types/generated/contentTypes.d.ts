@@ -2085,6 +2085,7 @@ export interface ApiReferralReferral extends Struct.CollectionTypeSchema {
     publishedAt: Schema.Attribute.DateTime;
     qualifiedAt: Schema.Attribute.DateTime;
     referralCode: Schema.Attribute.String & Schema.Attribute.Required;
+    referredIdentityKey: Schema.Attribute.String & Schema.Attribute.Unique & Schema.Attribute.Private;
     referredUser: Schema.Attribute.Relation<
       'manyToOne',
       'plugin::users-permissions.user'
@@ -2095,6 +2096,7 @@ export interface ApiReferralReferral extends Struct.CollectionTypeSchema {
     >;
     refundWindowEndsAt: Schema.Attribute.DateTime;
     registeredAt: Schema.Attribute.DateTime;
+    registrationKey: Schema.Attribute.String & Schema.Attribute.Unique & Schema.Attribute.Private;
     rewardAmount: Schema.Attribute.Decimal & Schema.Attribute.DefaultTo<0>;
     rewardBatchKey: Schema.Attribute.String;
     rewardCurrency: Schema.Attribute.Enumeration<['USD', 'CNY', 'EUR', 'GBP']> &
@@ -2919,7 +2921,8 @@ export interface PluginUsersPermissionsUser
     referralCount: Schema.Attribute.Integer & Schema.Attribute.DefaultTo<0>;
     referralRewardBalance: Schema.Attribute.Decimal &
       Schema.Attribute.DefaultTo<0>;
-    referredByCode: Schema.Attribute.String;
+    referredByCode: Schema.Attribute.String & Schema.Attribute.Private;
+    registrationIdentityKey: Schema.Attribute.String & Schema.Attribute.Unique & Schema.Attribute.Private;
     registrationPlatform: Schema.Attribute.Enumeration<
       ['web', 'miniprogram', 'ios', 'android', 'admin']
     > &

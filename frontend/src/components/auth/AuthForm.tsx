@@ -95,7 +95,7 @@ export function AuthForm({
           password: fd.get("password"),
           privacyConsent: fd.get("privacyConsent") === "on",
           marketingConsent: fd.get("marketingConsent") === "on",
-          referralCode,
+          referredByCode: referralCode,
           sourceChannel,
           captcha: { ...captchaProof, trap: fd.get("company") },
         }

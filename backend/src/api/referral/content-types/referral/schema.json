@@ -11,6 +11,18 @@
   },
   "pluginOptions": {},
   "attributes": {
+    "registrationKey": {
+      "type": "string",
+      "unique": true,
+      "private": true,
+      "column": { "unique": true }
+    },
+    "referredIdentityKey": {
+      "type": "string",
+      "unique": true,
+      "private": true,
+      "column": { "unique": true }
+    },
     "referralCode": {
       "type": "string",
       "required": true
