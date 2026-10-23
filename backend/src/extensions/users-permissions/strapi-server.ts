@@ -1,4 +1,5 @@
 import { ensureReferralCode, normalizeReferralCode, REFERRAL_PROTECTED_FIELDS } from '../../utils/referral-registration';
+import { withOAuthAttempt } from '../../utils/oauth-attempt';
 
 const providers = new Set(['google', 'linkedin', 'twitter']);
 
@@ -59,6 +60,7 @@ export default (plugin: any) => {
   const authFactory = plugin.controllers.auth;
   plugin.controllers.auth = (context: any) => {
     const controller = authFactory(context);
+    controller.connect = withOAuthAttempt(context.strapi, controller.connect.bind(controller));
     const register = controller.register.bind(controller);
     controller.register = (ctx: any) => {
       if (Object.prototype.hasOwnProperty.call(ctx.request.body ?? {}, 'referredByCode')) {

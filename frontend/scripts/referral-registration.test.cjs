@@ -11,7 +11,8 @@ const { renderToStaticMarkup } = require('react-dom/server');
 
 const origin = 'https://website.example.test';
 const backend = 'https://cms.example.test';
-const contextCookie = 'suremandarin_oauth_context';
+const attempt = 'a'.repeat(48);
+const contextCookie = `suremandarin_oauth_${attempt}`;
 const registration = {
   fullName: 'Synthetic New Learner', email: 'new@example.test', password: 'synthetic-test-only',
   privacyConsent: true, marketingConsent: false, sourceChannel: 'website', captcha: { token: 'synthetic' },
@@ -28,6 +29,7 @@ function load(relativePath, imports, globals = {}) {
     process: { env: { NODE_ENV: 'production' } },
     require(name) {
       if (Object.hasOwn(imports, name)) return imports[name];
+      if (name === '@/lib/oauth-context') return load('lib/oauth-context.ts', {});
       throw new Error(`Unexpected dependency: ${name}`);
     }, ...globals,
   }, { filename });
@@ -55,20 +57,28 @@ function registrationHarness({ captcha = true, allowed = true, status = 200, res
 
 function callbackHarness(context, { ok = true, result = { jwt: 'synthetic-session' } } = {}) {
   const requests = [], sessions = [], deleted = [];
-  let savedCookie = typeof context === 'string' ? context : context ? Buffer.from(JSON.stringify(context)).toString('base64url') : undefined;
+  let consumed = false, currentProvider;
+  function savedCookie() {
+    if (consumed || !context) return undefined;
+    if (typeof context === 'string') return context;
+    return Buffer.from(JSON.stringify({ locale: 'en', mode: 'login', ref: '', refName: '', source: 'website',
+      expiresAt: Date.now() + 600_000, provider: currentProvider, ...context })).toString('base64url');
+  }
   const { GET } = load('app/api/auth/oauth/callback/[provider]/route.ts', {
     'next/server': { NextResponse },
     'next/headers': { cookies: async () => ({
-      get: () => savedCookie ? { value: savedCookie } : undefined,
-      delete: (name) => { deleted.push(name); savedCookie = undefined; },
+      get: (name) => name === contextCookie && savedCookie() ? { value: savedCookie() } : undefined,
+      delete: (name) => { deleted.push(name); consumed = true; },
     }) },
     '@/lib/auth': { STRAPI_URL: backend, setAuthCookie: async (token) => sessions.push(token) },
   }, { fetch: async (url, options) => {
     requests.push({ url: new URL(url), options });
     return { ok, json: async () => result };
   } });
-  return { requests, sessions, deleted, callback: (provider, query = 'access_token=synthetic') =>
-    GET(new Request(`${origin}/api/auth/oauth/callback/${provider}?${query}`), { params: Promise.resolve({ provider }) }) };
+  return { requests, sessions, deleted, callback: (provider, query = 'access_token=synthetic') => {
+    currentProvider = provider;
+    return GET(new Request(`${origin}/api/auth/oauth/callback/${provider}?oauthAttempt=${attempt}&${query}`), { params: Promise.resolve({ provider }) });
+  } };
 }
 
 test('ordinary invitation registration reaches Strapi using referredByCode', async () => {
@@ -115,8 +125,8 @@ for (const provider of ['google', 'linkedin', 'twitter']) {
     await app.callback(provider);
     await app.callback(provider);
     assert.equal(app.requests[0].url.searchParams.get('referredByCode'), 'INVITER123');
-    assert.equal(app.requests[1].url.searchParams.has('referredByCode'), false);
-    assert.equal(app.requests[1].url.searchParams.has('mode'), false);
+    assert.equal(app.requests.length, 1, 'Replayed callback must not create an account without its invitation');
+    assert.equal(app.sessions.length, 1);
   });
 
   test(`${provider} cookie invitation wins over a callback-supplied different referrer`, async () => {
@@ -185,9 +195,8 @@ for (const context of [undefined, 'invalid-base64-json', { mode: 'register', ref
   test(`missing or malformed OAuth invitation ${JSON.stringify(context)} cannot create a callback referral`, async () => {
     const app = callbackHarness(context);
     await app.callback('google', 'access_token=synthetic&referredByCode=FORGED&referralCode=FORGED');
-    assert.equal(app.requests[0].url.searchParams.has('referredByCode'), false);
-    assert.equal(app.requests[0].url.searchParams.has('referralCode'), false);
-    assert.deepEqual(app.sessions, ['synthetic-session']);
+    assert.equal(app.requests.length, 0, 'Missing invitation context must fail before account creation');
+    assert.deepEqual(app.sessions, []);
   });
 }
 

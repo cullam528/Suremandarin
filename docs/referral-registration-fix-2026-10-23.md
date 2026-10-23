@@ -12,6 +12,7 @@ The investigation also found that Strapi's registration allowlist omitted the in
 
 - The URL remains `?ref=<inviter-code>`. Registration uses `referredByCode` end to end. Next accepts the old `referralCode` request alias for stale web clients, but sends only the canonical field to Strapi. `referralCode` on a member is their own server-generated sharing code.
 - OAuth passes invitation context saved when registration began. Callback URL fields cannot override that context. Strapi first verifies the provider profile with the existing adapter and applies the code only when the provider service creates a new account. Existing accounts keep their current identity and receive no new referral or trial.
+- Each website OAuth attempt has its own short-lived context cookie and callback identifier. The backend matches that attempt using the provider's original OAuth state or request token, then runs the original validation and exchange. Interleaved windows cannot borrow another attempt's invitation. Missing, expired, evicted or mismatched context is rejected before account creation; the user must restart sign-in.
 - Unknown, malformed, oversized, blocked-inviter and self-referral codes do not grant credit. Ordinary registration remains usable. Existing emails (including legacy mixed-case records) cannot create another account to claim a trial, even if provider unique-email configuration is relaxed. This is account/email protection, not proof that two different emails belong to different humans.
 - A new member receives a random persisted sharing code. An existing member without one gets a code on their own authenticated `/users/me` request. This operation does not change their inviter or issue credit. The UI no longer invents fallback codes.
 - Account creation, referral creation, the trial credit and referral counter changes commit together. Failures roll back; retrying does not leave an orphan account or partial reward. Registration notifications run after commit. Remote OAuth verification runs outside the database transaction.
@@ -44,6 +45,16 @@ The frontend tests execute actual form/request/OAuth route code with controlled 
 Default integration storage is a temporary SQLite file. PostgreSQL CI uses an isolated service and a random schema per test. Optional `REFERRAL_TEST_POSTGRES_URL` accepts loopback hosts and only the dedicated `suremandarin_referral_test` database; schemas are removed after the run. `.github/workflows/referral-registration-tests.yml` runs both database variants.
 
 Frontend production-build verification uses a disposable local public-CMS fixture, because the unconfigured default CMS endpoint timed out. This verifies the build without relying on production content availability.
+
+## Pre-merge review follow-up
+
+The second review reproduced a multi-window defect in the first PR revision: starting Google with invitation A, then LinkedIn with invitation B, overwrote the shared website context cookie. The first callback could receive B and the second no invitation. Per-attempt website cookies alone were insufficient: the installed Strapi connector also used one session slot and replaced callback query parameters when redirecting.
+
+The follow-up isolates the contexts on both sides and preserves the attempt identifier only on the validated frontend callback. Pending backend attempts have a time, count and encoded-size bound because the current deployment uses cookie-based sessions. Truly simultaneous responses can still overwrite a browser session snapshot; an attempt lost this way must fail safely and be restarted, never use another invitation. Provider authentication and authorization-code/request-token validation remain owned by Strapi. Authorization started before this rollout may also need to be restarted.
+
+The new regression cases first failed on the reviewed revision (6 frontend failures and 6 of 7 initial backend failures). After the fix, **174 frontend tests and 59 backend tests pass**, including 6 new website-attempt cases and 10 connector cases using the installed Strapi controller/middleware with synthetic provider exchanges. The latter cover both OAuth2 state and Twitter OAuth1 request-token matching, reverse completion order, wrong/expired/replayed attempts, callback override rejection, legacy-client isolation, lost concurrent cookie snapshots, and serialized Koa session size. Type checks and the focused frontend lint check pass.
+
+The review separately exercised the installed Strapi Document Service with a disposable database: a valid invitation produced one relation and one trial, and an injected credit-write failure rolled back the member. This supplements the committed focused database harness; it is not a live provider or production database test.
 
 ## Deployment and historical review
 

@@ -20,6 +20,9 @@ function load(relativePath, imports, globals = {}) {
     process: { env: { NODE_ENV: 'production' } },
     require(name) {
       if (Object.hasOwn(imports, name)) return imports[name];
+      if (name === '@/lib/oauth-context') return load('lib/oauth-context.ts', {});
+      if (name === 'node:crypto') return require('node:crypto');
+      if (name === 'next/headers') return { cookies: async () => ({ getAll: () => [], get: () => undefined }) };
       throw new Error(`Unexpected dependency: ${name}`);
     },
     ...globals,
@@ -31,7 +34,8 @@ const origin = 'https://website.example.test';
 const backend = 'https://cms.example.test';
 const params = (provider) => ({ params: Promise.resolve({ provider }) });
 const context = { locale: 'zh', mode: 'register', ref: 'TEST123', refName: 'Test Inviter', source: 'website' };
-const contextCookie = 'suremandarin_oauth_context';
+const attempt = 'a'.repeat(48);
+const contextCookie = `suremandarin_oauth_${attempt}`;
 
 for (const provider of ['google', 'linkedin', 'twitter']) {
   test(`${provider} starts OAuth at the backend and retains bilingual registration context`, async () => {
@@ -39,9 +43,15 @@ for (const provider of ['google', 'linkedin', 'twitter']) {
       'next/server': { NextResponse }, '@/lib/auth': { STRAPI_URL: backend },
     });
     const response = await GET(new Request(`${origin}/api/auth/oauth/${provider}?${new URLSearchParams(context)}`), params(provider));
-    assert.equal(response.headers.get('location'), `${backend}/api/connect/${provider}`);
-    const cookie = response.cookies.get(contextCookie);
-    assert.deepEqual(JSON.parse(Buffer.from(cookie.value, 'base64url').toString()), context);
+    const redirect = new URL(response.headers.get('location'));
+    assert.equal(redirect.origin + redirect.pathname, `${backend}/api/connect/${provider}`);
+    const callback = new URL(redirect.searchParams.get('callback'));
+    assert.equal(callback.origin + callback.pathname, `${origin}/api/auth/oauth/callback/${provider}`);
+    assert.match(callback.searchParams.get('oauthAttempt'), /^[a-f0-9]{48}$/);
+    const cookie = response.cookies.get(`suremandarin_oauth_${callback.searchParams.get('oauthAttempt')}`);
+    const decoded = JSON.parse(Buffer.from(cookie.value, 'base64url').toString());
+    assert.deepEqual(decoded, { ...context, provider, expiresAt: decoded.expiresAt });
+    assert.ok(decoded.expiresAt > Date.now());
     assert.equal(cookie.httpOnly, true);
     assert.equal(cookie.secure, true);
     assert.equal(cookie.sameSite, 'lax');
@@ -59,12 +69,12 @@ test('retired Facebook and unsupported providers cannot start website OAuth', as
   }
 });
 
-function callbackHarness({ result = { jwt: 'synthetic-session' }, ok = true, failure, invalidJson = false } = {}) {
+function callbackHarness({ provider = 'linkedin', result = { jwt: 'synthetic-session' }, ok = true, failure, invalidJson = false } = {}) {
   const sessions = [], requests = [], deleted = [];
   const { GET } = load('app/api/auth/oauth/callback/[provider]/route.ts', {
     'next/server': { NextResponse },
     'next/headers': { cookies: async () => ({
-      get: () => ({ value: Buffer.from(JSON.stringify(context)).toString('base64url') }),
+      get: () => ({ value: Buffer.from(JSON.stringify({ ...context, provider, expiresAt: Date.now() + 600_000 })).toString('base64url') }),
       delete: (name) => deleted.push(name),
     }) },
     '@/lib/auth': { STRAPI_URL: backend, setAuthCookie: async (token) => sessions.push(token) },
@@ -80,8 +90,8 @@ function callbackHarness({ result = { jwt: 'synthetic-session' }, ok = true, fai
 
 for (const provider of ['google', 'linkedin', 'twitter']) {
   test(`${provider} completes its callback through Strapi and keeps the requested language`, async () => {
-    const harness = callbackHarness();
-    const response = await harness.GET(new Request(`${origin}/api/auth/oauth/callback/${provider}?access_token=synthetic-access`), params(provider));
+    const harness = callbackHarness({ provider });
+    const response = await harness.GET(new Request(`${origin}/api/auth/oauth/callback/${provider}?oauthAttempt=${attempt}&access_token=synthetic-access`), params(provider));
     const upstream = new URL(harness.requests[0].url);
     assert.equal(upstream.origin + upstream.pathname, `${backend}/api/auth/${provider}/callback`);
     assert.equal(upstream.searchParams.get('access_token'), 'synthetic-access');
@@ -104,7 +114,7 @@ for (const [name, options, query, reason, requestCount] of [
 ]) {
   test(`LinkedIn ${name} returns safely to registration without creating a session`, async () => {
     const harness = callbackHarness(options);
-    const response = await harness.GET(new Request(`${origin}/api/auth/oauth/callback/linkedin?${query}`), params('linkedin'));
+    const response = await harness.GET(new Request(`${origin}/api/auth/oauth/callback/linkedin?oauthAttempt=${attempt}&${query}`), params('linkedin'));
     const location = new URL(response.headers.get('location'));
     assert.equal(location.pathname, '/zh/register');
     assert.equal(location.searchParams.get('oauth'), reason);
@@ -117,7 +127,7 @@ for (const [name, options, query, reason, requestCount] of [
 
 test('retired Facebook callbacks cannot create a website session', async () => {
   const harness = callbackHarness();
-  const response = await harness.GET(new Request(`${origin}/api/auth/oauth/callback/facebook?access_token=synthetic-access`), params('facebook'));
+  const response = await harness.GET(new Request(`${origin}/api/auth/oauth/callback/facebook?oauthAttempt=${attempt}&access_token=synthetic-access`), params('facebook'));
   assert.equal(new URL(response.headers.get('location')).searchParams.get('oauth'), 'unsupported');
   assert.equal(harness.requests.length, 0);
   assert.equal(harness.sessions.length, 0);
