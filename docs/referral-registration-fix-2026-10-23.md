@@ -2,7 +2,7 @@
 
 ## Scope and reproduced failures
 
-Based on `main` commit `76a9604`. No production data was read or changed, and no historical reward was issued.
+Based on `main` commit `76a9604`. No production member, referral or credit data was read or changed, and no historical reward was issued.
 
 The first regression run executed the actual Next registration/OAuth route handlers: **23 tests, 19 passed, 4 failed**. Local registration omitted `referredByCode`; Google, LinkedIn and Twitter each omitted the invitation from the Strapi callback exchange. An additional invitation-page render test reproduced `ReferenceError: window is not defined`.
 
