@@ -82,7 +82,7 @@ export const appApiDocumentation = {
       post: {
         tags: ['Authentication'],
         summary: 'Register a member',
-        description: 'Creates a registered member and returns a JWT. Mobile clients should set registrationPlatform to ios, android, or miniprogram.',
+        description: 'Creates a registered member and returns a JWT. Mobile clients should set registrationPlatform to ios, android, or miniprogram. Optional referredByCode identifies an inviting member; only new accounts can receive the one-time shared trial lesson. Unknown codes do not block registration. referralCode is the server-issued code owned by a member and is not a registration input.',
         operationId: 'registerMember',
         security: [],
         requestBody: body('RegisterRequest', {
@@ -314,6 +314,7 @@ export const appApiDocumentation = {
           fullName: { type: 'string' }, displayName: { type: 'string' }, phone: { type: 'string' }, country: { type: 'string' }, preferredLanguage: { type: 'string', enum: ['en', 'zh-CN'] },
           timezone: { type: 'string' }, registrationSource: { type: 'string' }, registrationPlatform: { type: 'string', enum: ['web', 'miniprogram', 'ios', 'android'] },
           marketingConsent: { type: 'boolean' }, privacyPolicyVersion: { type: 'string' }, privacyConsentAt: { type: 'string', format: 'date-time' },
+          referredByCode: { type: 'string', maxLength: 80, description: 'Invitation code from the ref URL parameter; applied only during new account creation.' },
         },
       },
       LoginRequest: { type: 'object', required: ['identifier', 'password'], properties: { identifier: { type: 'string' }, password: { type: 'string', format: 'password' } } },

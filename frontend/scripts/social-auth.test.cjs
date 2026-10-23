@@ -82,7 +82,11 @@ for (const provider of ['google', 'linkedin', 'twitter']) {
   test(`${provider} completes its callback through Strapi and keeps the requested language`, async () => {
     const harness = callbackHarness();
     const response = await harness.GET(new Request(`${origin}/api/auth/oauth/callback/${provider}?access_token=synthetic-access`), params(provider));
-    assert.equal(harness.requests[0].url, `${backend}/api/auth/${provider}/callback?access_token=synthetic-access`);
+    const upstream = new URL(harness.requests[0].url);
+    assert.equal(upstream.origin + upstream.pathname, `${backend}/api/auth/${provider}/callback`);
+    assert.equal(upstream.searchParams.get('access_token'), 'synthetic-access');
+    assert.equal(upstream.searchParams.get('referredByCode'), context.ref);
+    assert.equal(upstream.searchParams.get('mode'), 'register');
     assert.equal(harness.requests[0].options.cache, 'no-store');
     assert.deepEqual(harness.sessions, ['synthetic-session']);
     assert.deepEqual(harness.deleted, [contextCookie]);

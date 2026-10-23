@@ -1,5 +1,5 @@
 import type { Core } from '@strapi/strapi';
-import { grantReferralTrialLesson, evaluateReferralRewards } from './api/referral/services/referral-rewards';
+import { evaluateReferralRewards } from './api/referral/services/referral-rewards';
 import {
   adjustLessonHoursBalance,
   isSyncingLessonBalance,
@@ -9,6 +9,7 @@ import {
 import { appApiDocumentation } from './documentation/app-api';
 import { LINKEDIN_SCOPES, linkedinAuthCallback } from './utils/linkedin-auth';
 import { runBootstrapStep } from './utils/bootstrap-step';
+import { createReferralRecord, prepareReferralRegistration } from './utils/referral-registration';
 
 const courses = [
   ['Private Course','private'], ['Group Course','group'], ['Learn & Travel Course','learn-travel'],
@@ -760,43 +761,6 @@ async function notifyNewUserRegistration(strapi: Core.Strapi, user: any, registr
   });
 }
 
-async function createReferralRecord(strapi: Core.Strapi, user: any, registrationData: any) {
-  const referredByCode = String(user?.referredByCode ?? registrationData?.referredByCode ?? '').trim();
-  if (!referredByCode || !user?.id) return;
-  const referrers = await strapi.db.query('plugin::users-permissions.user').findMany({
-    where: { referralCode: referredByCode },
-    limit: 1,
-  });
-  const referrer = referrers[0];
-  if (!referrer || referrer.id === user.id) return;
-  const existing = await strapi.db.query('api::referral.referral').findMany({
-    where: { referredUser: user.id },
-    limit: 1,
-  });
-  if (existing.length) {
-    // Retry idempotently if the referral row was created but the lesson credit
-    // grant was interrupted during the original registration lifecycle.
-    await grantReferralTrialLesson(strapi, user.id);
-    return;
-  }
-  await strapi.documents('api::referral.referral').create({ data: {
-    referralCode: referredByCode,
-    sourceChannel: String(registrationData?.registrationSource ?? 'website').slice(0, 40),
-    referrer: referrer.id,
-    referredUser: user.id,
-    rewardStatus: 'pending',
-    rewardAmount: 0,
-    rewardHours: 0,
-    rewardCurrency: 'USD',
-    registeredAt: new Date().toISOString(),
-  } as any });
-  await grantReferralTrialLesson(strapi, user.id);
-  await strapi.db.query('plugin::users-permissions.user').update({
-    where: { id: referrer.id },
-    data: { referralCount: Number(referrer.referralCount ?? 0) + 1 },
-  });
-}
-
 async function markReferralEnrollment(strapi: Core.Strapi, enrollment: any, enrollmentData: any) {
   const userId = enrollment?.user?.id ?? enrollmentData?.user;
   const courseId = enrollment?.course?.id ?? enrollmentData?.course;
@@ -1472,8 +1436,9 @@ export default {
     });
     strapi.db.lifecycles.subscribe({
       models: ['plugin::users-permissions.user'],
-      beforeCreate: (event) => {
+      beforeCreate: async (event) => {
         const data = event.params?.data as Record<string, unknown> | undefined;
+        if (data) await prepareReferralRegistration(strapi, data);
         const provider = String(data?.provider ?? '').trim().toLowerCase();
         if (!data || !provider || provider === 'local') return;
         const fallbackName = String(data.fullName ?? data.displayName ?? data.username ?? '').trim();
@@ -1494,14 +1459,16 @@ export default {
         event.state = { ...(event.state ?? {}), lessonHoursAdjustment: { userId: current.id, target } };
       },
       afterCreate: async (event) => {
-        void notifyNewUserRegistration(strapi, event.result, event.params?.data).catch((error) => {
-          strapi.log.error(`Unable to send new registration notification: ${error instanceof Error ? error.message : String(error)}`);
+        // A failed referral grant must roll back account creation as well, so a
+        // successful registration never silently loses its promised reward.
+        await createReferralRecord(strapi, event.result, event.params?.data);
+        await strapi.db.transaction(async ({ onCommit }) => {
+          onCommit(() => {
+            void notifyNewUserRegistration(strapi, event.result, event.params?.data).catch((error) => {
+              strapi.log.error(`Unable to send new registration notification: ${error instanceof Error ? error.message : String(error)}`);
+            });
+          });
         });
-        try {
-          await createReferralRecord(strapi, event.result, event.params?.data);
-        } catch (error) {
-          strapi.log.error(`Unable to create referral record: ${error instanceof Error ? error.message : String(error)}`);
-        }
       },
       afterUpdate: async (event) => {
         const adjustment = event.state?.lessonHoursAdjustment as { userId?: number; target?: number } | undefined;

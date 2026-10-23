@@ -216,14 +216,20 @@ export function AccountSection({
               />
             ))}
           {section === "my-courses" && <MyCoursesPanel locale={locale} overview={overview} currentUserId={Number((user as { id?: number }).id ?? 0)} />}
-          {section === "referrals" && (
+          {section === "referrals" && (user.referralCode ? (
             <ReferralCenter
               locale={locale}
-              referralCode={user.referralCode || `SM-${(user.username || user.email || "LEARNER").replace(/[^a-z0-9]/gi, "").slice(0, 8).toUpperCase()}`}
+              referralCode={user.referralCode}
               referrerName={user.fullName || user.username || (locale === "zh" ? "SureMandarin 学员" : "A SureMandarin learner")}
               overview={overview}
             />
-          )}
+          ) : (
+            <div className="mt-10 rounded-2xl border border-brand-line p-6 text-sm text-slate-600" role="status">
+              {zh
+                ? "推荐链接暂时无法获取，请刷新页面后重试。"
+                : "Your referral link is temporarily unavailable. Refresh this page to try again."}
+            </div>
+          ))}
           </div>
         </div>
     </section>

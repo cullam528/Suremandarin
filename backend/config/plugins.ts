@@ -47,6 +47,7 @@ const config = ({ env }: Core.Config.Shared.ConfigParams): Core.Config.Plugin =>
           'displayName', 'fullName', 'phone', 'country', 'preferredLanguage',
           'timezone', 'registrationSource', 'registrationPlatform',
           'marketingConsent', 'privacyPolicyVersion', 'privacyConsentAt',
+          'referredByCode',
         ],
       },
       ratelimit: {

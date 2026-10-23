@@ -72,8 +72,24 @@ export async function GET(
     ));
 
   try {
+    // Provider callback URLs are untrusted. Invitation data comes only from
+    // the context saved when registration started and is applied by Strapi
+    // only when the verified provider identity creates a new member.
+    const providerQuery = new URLSearchParams(url.searchParams);
+    for (const key of ["ref", "refName", "referralCode", "referredByCode", "referrer", "referrerId", "referredUser", "referredUserId", "referee", "refereeId", "referralSource", "source", "registrationSource", "mode"]) {
+      providerQuery.delete(key);
+    }
+    if (context.mode === "register") {
+      providerQuery.set("mode", "register");
+      const invitationCode = context.ref?.trim() ?? "";
+      if (invitationCode && invitationCode.length <= 80) {
+        providerQuery.set("referredByCode", invitationCode);
+        const allowedSources = new Set(["website", "whatsapp", "facebook", "email", "miniprogram", "ios", "android", "other"]);
+        providerQuery.set("referralSource", allowedSources.has(context.source ?? "") ? context.source! : "website");
+      }
+    }
     const response = await fetch(
-      `${STRAPI_URL}/api/auth/${provider}/callback?${url.searchParams.toString()}`,
+      `${STRAPI_URL}/api/auth/${provider}/callback?${providerQuery.toString()}`,
       { headers: { Accept: "application/json" }, cache: "no-store" },
     );
     const result = await response.json().catch(() => null) as AuthResult | null;

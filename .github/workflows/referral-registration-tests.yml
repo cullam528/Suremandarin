@@ -1,0 +1,66 @@
+name: Registration and referral regression tests
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [fix/referral-registration-rewards]
+
+permissions:
+  contents: read
+
+jobs:
+  frontend:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+          cache-dependency-path: frontend/pnpm-lock.yaml
+      - run: pnpm install --frozen-lockfile
+      - run: node --test scripts/*.test.cjs
+      - run: pnpm exec tsc --noEmit
+
+  backend:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_DB: suremandarin_referral_test
+          POSTGRES_USER: referral_test
+          POSTGRES_PASSWORD: local-test-only
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+          cache-dependency-path: backend/pnpm-lock.yaml
+      - run: pnpm install --frozen-lockfile
+      - run: node --test tests/*.test.cjs src/api/article/controllers/article.test.cjs
+      - run: pnpm exec tsc --noEmit --incremental false
+      - name: Referral integration with PostgreSQL and isolated schemas
+        run: node --test tests/referral-registration.integration.test.cjs
+        env:
+          REFERRAL_TEST_POSTGRES_URL: postgresql://referral_test:local-test-only@127.0.0.1:5432/suremandarin_referral_test

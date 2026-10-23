@@ -19,7 +19,8 @@ export async function GET(
   const url = new URL(request.url);
   const locale = url.searchParams.get("locale") === "zh" ? "zh" : "en";
   const mode = url.searchParams.get("mode") === "register" ? "register" : "login";
-  const ref = url.searchParams.get("ref")?.trim().slice(0, 80) ?? "";
+  const invitation = mode === "register" ? url.searchParams.get("ref")?.trim() ?? "" : "";
+  const ref = invitation.length <= 80 ? invitation : "";
   const refName = url.searchParams.get("refName")?.trim().slice(0, 120) ?? "";
   const source = url.searchParams.get("source")?.trim().slice(0, 40) ?? "website";
   const context = Buffer.from(JSON.stringify({ locale, mode, ref, refName, source })).toString("base64url");
