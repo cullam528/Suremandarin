@@ -5,6 +5,7 @@
   "description": "A Strapi application",
   "scripts": {
     "test:auth-gateway": "node --test tests/auth-gateway.test.cjs",
+    "test:auth-staging": "node scripts/auth-staging-smoke.cjs",
     "build": "strapi build",
     "console": "strapi console",
     "deploy": "strapi deploy",

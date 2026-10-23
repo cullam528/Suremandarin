@@ -63,6 +63,14 @@ Run `npm run test:auth-gateway` for isolated middleware and real Koa-router test
 They use synthetic configuration, loopback requests, and no database, mail
 service, or production deployment.
 
+After `npm run build`, run `npm run test:auth-staging` for real Strapi HTTP,
+database, session and email-template checks with disposable SQLite. This needs
+a working `better-sqlite3` native binding. The harness supplies a clean synthetic
+environment, ignores repository `.env` files, blocks outbound connections and
+captures mail locally; it does not prove real email delivery. See the
+[Preview configuration and verification report](../docs/preview-validation-2026-10-23.md)
+for hosted staging requirements and actual results.
+
 ### `develop`
 
 Start your Strapi application with autoReload enabled. [Learn more](https://docs.strapi.io/dev-docs/cli#strapi-develop)

@@ -4,6 +4,8 @@ Base: `main` at `76a9604c6f31985070e0adac6de87813dc04a002`. Branch: `security/au
 
 This change has been tested in an isolated checkout. No production secrets were read, no production account requests were sent, and no production deployment was changed. Production configuration and any historical compromise remain unverified.
 
+Follow-up: [PR #1 Preview deployment diagnosis, missing configuration and isolated staging checks](./preview-validation-2026-10-23.md). Preview had no environment variables; build diagnostics now list all missing/invalid names without exposing values. Strict build and runtime validation remains enabled.
+
 ## Confirmed defects and fixes
 
 The [offline baseline](../artifacts/security-baseline/README.md) has six executable reproductions. Even with a configured signing key, the old puzzle accepted returned target coordinates plus invented timing/movement fields. Separate processes accepted the same proof and maintained independent request budgets. The public fallback key was exploitable in the isolated test when all configured keys were absent; this does **not** establish that production used that fallback.
@@ -57,13 +59,14 @@ Installed frontend and backend dependencies from their existing pnpm lockfiles w
 | --- | --- |
 | Pre-change related frontend tests | 51 passed |
 | Offline baseline vulnerability reproductions | 6 passed |
-| Full frontend suite, including real Redis integration | 202 passed, 0 failed, 0 skipped |
+| Full frontend suite, including real Redis integration and configuration diagnostics | 208 passed, 0 failed, 0 skipped |
 | Full backend suite (root tests and article controller tests) | 43 passed, 0 failed |
 | Frontend and backend TypeScript checks | Passed |
 | Frontend and backend production builds | Passed; frontend used synthetic config and a read-only loopback CMS fixture |
 | Production build with missing security config | Rejected as expected before build |
 | Frontend ESLint | 0 errors; 2 pre-existing useMemo dependency warnings in MyCoursesPanel.tsx |
 | Local browser smoke check | Login page rendered; blocked CAPTCHA loading produced an error and disabled submit |
+| Real local Strapi with disposable SQLite and mail sink | 7 account flow groups passed; 2 synthetic members, 2 captured messages, no real email delivered |
 
 Redis integration ran on a disposable **Redis 7.4.7** bound to loopback, with no persistence and an HTTP test bridge. Four independent Node processes shared that Redis: 24 simultaneous login attempts admitted exactly 10; a new process stayed blocked; registration/forgot/reset quotas were also shared. Sixteen concurrent duplicate CAPTCHA submissions admitted one, even though the isolated Siteverify stub deliberately returned success to all processes. Tests also verify expiry of the actual Lua window and the replay record TTL. The real managed Upstash service and real Turnstile Siteverify were **not** claimed as validated.
 
